@@ -1,0 +1,6 @@
+html.light {
+  /* 自定义深色背景颜色 */
+  --demo-bg: #ef628a;
+  --demo-text: #000;
+  --demo-border: #f6a5bb;
+}

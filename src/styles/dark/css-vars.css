@@ -1,0 +1,6 @@
+html.dark {
+  /* 自定义深色背景颜色 */
+  --demo-bg: #626aef;
+  --demo-text: #fff;
+  --demo-border: #979dff;
+}
