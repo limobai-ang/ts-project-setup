@@ -2,7 +2,7 @@
   <div class="app" id="app">
     <el-container>
       <el-header style="padding: 0;">
-        <Header />
+        <Header></Header>
       </el-header>
       <el-main style="padding: 0;">
         <router-view />
@@ -13,7 +13,7 @@
 </template>
 
 <script lang="ts" setup>
-import Header from '@/components/header'
+import Header from '@/components/header/index.vue'
 </script>
 
 <style lang="less">
