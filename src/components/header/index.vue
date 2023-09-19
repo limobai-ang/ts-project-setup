@@ -1,5 +1,5 @@
 <template>
-  <el-menu :default-active="activeIndex" class="el-menu-demo" mode="horizontal" :ellipsis="false" @select="handleSelect">
+  <el-menu :default-active="route.path" class="el-menu-demo" mode="horizontal" router :ellipsis="false">
     <div class="header-content">
       <el-avatar :size="32" class="mr-3" src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
       <span class="text-large font-600 mr-3">Title </span>
@@ -8,19 +8,8 @@
       </span>
     </div>
     <div class="flex-grow" />
-    <el-menu-item index="1">Home</el-menu-item>
-    <el-sub-menu index="2">
-      <template #title>User</template>
-      <el-menu-item index="2-1">item one</el-menu-item>
-      <el-menu-item index="2-2">item two</el-menu-item>
-      <el-menu-item index="2-3">item three</el-menu-item>
-      <el-sub-menu index="2-4">
-        <template #title>item four</template>
-        <el-menu-item index="2-4-1">item one</el-menu-item>
-        <el-menu-item index="2-4-2">item two</el-menu-item>
-        <el-menu-item index="2-4-3">item three</el-menu-item>
-      </el-sub-menu>
-    </el-sub-menu>
+    <el-menu-item index="/home">Home</el-menu-item>
+    <el-menu-item index="/user">User</el-menu-item>
     <el-switch class="switch-el" v-model="isDark" :active-action-icon="Moon" :inactive-action-icon="Sunny"
       @change="toggleDark" />
   </el-menu>
@@ -31,6 +20,10 @@ import { Sunny, Moon } from '@element-plus/icons-vue'
 import { useDark, useToggle } from '@vueuse/core'
 import '@/utils/elementPlusResizeObserverError'
 import { ref } from 'vue';
+import { useRoute } from 'vue-router';
+
+const route = useRoute()
+
 const isDark = useDark({
   selector: 'html',
   attribute: 'class',
@@ -38,12 +31,6 @@ const isDark = useDark({
   valueLight: 'light',
 })
 const toggleDark = () => useToggle(isDark);
-
-// 菜单
-const activeIndex = ref('1')
-const handleSelect = (key: string, keyPath: string[]) => {
-  console.log(key, keyPath)
-}
 </script>
 
 <style lang="less" scoped>

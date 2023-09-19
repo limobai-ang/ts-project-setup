@@ -34,9 +34,9 @@
 
       <el-container>
         <el-main style="padding-top: 0;">
-          <div class="box">
+          <!-- <div class="box">
             <h1>Hello World</h1>
-          </div>
+          </div> -->
         </el-main>
       </el-container>
     </el-container>

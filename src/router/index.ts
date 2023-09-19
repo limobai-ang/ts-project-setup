@@ -1,4 +1,5 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
+import { useStore } from 'vuex'
 
 const routes: Array<RouteRecordRaw> = [
   {
@@ -14,6 +15,11 @@ const routes: Array<RouteRecordRaw> = [
   path: '/user',
     name: 'user',
     component: import('@/views/user/index.vue')
+  },
+  {
+    path: '/login',
+    name: 'user',
+    component: import('@/views/login/index.vue')
   },
   {
     path: '/:catchAll(.*)',
