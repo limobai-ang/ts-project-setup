@@ -3,40 +3,40 @@
     <el-container class="layout-container-demo">
       <el-aside width="200px">
         <el-scrollbar>
-          <el-menu :default-openeds="['1']">
-            <el-sub-menu index="1">
+          <el-menu :router="true">
+            <el-sub-menu>
               <template #title>
                 <el-icon>
                   <message />
                 </el-icon>Navigator One
               </template>
               <el-menu-item-group>
-                <el-menu-item index="1-1">Option 1</el-menu-item>
+                <el-menu-item index="/home/1-1">Option 1</el-menu-item>
               </el-menu-item-group>
               <el-sub-menu index="1-2">
                 <template #title>Option2</template>
                 <el-menu-item index="1-2">Option 2-1</el-menu-item>
               </el-sub-menu>
             </el-sub-menu>
-            <el-sub-menu index="2">
-                <template #title>
-                  <el-icon>
-                    <setting />
-                  </el-icon>Navigator Two
-                </template>
-                <el-menu-item-group>
-                  <el-menu-item index="2-1">Option 1</el-menu-item>
-                </el-menu-item-group>
-              </el-sub-menu>
+            <el-sub-menu>
+              <template #title>
+                <el-icon>
+                  <setting />
+                </el-icon>Navigator Two
+              </template>
+              <el-menu-item-group>
+                <el-menu-item index="2-1">Option 1</el-menu-item>
+              </el-menu-item-group>
+            </el-sub-menu>
           </el-menu>
         </el-scrollbar>
       </el-aside>
 
       <el-container>
         <el-main style="padding-top: 0;">
-          <!-- <div class="box">
+          <div class="box">
             <h1>Hello World</h1>
-          </div> -->
+          </div>
         </el-main>
       </el-container>
     </el-container>
@@ -46,7 +46,7 @@
 </template>
 
 <script lang="ts" setup>
-import {  Message, Setting } from '@element-plus/icons-vue'
+import { Message, Setting } from '@element-plus/icons-vue'
 
 </script>
 <style lang="less" scoped>
