@@ -1,5 +1,6 @@
+import moment from 'moment'
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 
 export const useUserStore = defineStore('user', () => {
     const name = ref<string>('张三')
@@ -10,9 +11,15 @@ export const useUserStore = defineStore('user', () => {
     const addAge = () => {
         age.value++
     }
+
+    const dateOfBirth = computed(() => {
+        const date = moment().subtract(age.value, 'years');
+        return date.format('YYYY-MM-DD')
+    })
     return {
         name,
         age,
+        dateOfBirth,
         addAge,
         setName
     }

@@ -2,8 +2,8 @@
   <div class="user">
     <h1>Hello User</h1>
 
-    <h1>年龄：{{ store.age }}</h1>
-    <h1>姓名：{{ store.name }}</h1>
+    <h1>年龄：{{ age }}</h1>
+    <h1>姓名：{{ name }}</h1>
 
     <el-input v-model="input" placeholder="Please input" width="300px">
       <template #append>
@@ -17,11 +17,13 @@
 
 <script setup>
 import { useUserStore } from '@/store/user'
+import { storeToRefs } from 'pinia';
 import { ref } from 'vue'
 const store = useUserStore()
+const {age, name}  = storeToRefs(store)
 const input = ref('')
 const addAge = () => {
-  store.addAge()
+  age.value += 1
 }
 const setName = () => {
   store.setName(input.value)

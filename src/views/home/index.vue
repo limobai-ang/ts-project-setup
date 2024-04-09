@@ -36,13 +36,13 @@
         <el-main style="padding-top: 0;">
           <div class="box">
             <h1>Hello World</h1>
-            <h1>年龄：{{ store.age }}</h1>
-            <h1>姓名：{{ store.name }}</h1>
+            <h1>年龄：{{ age }}</h1>
+            <h1>姓名：{{ name }}</h1>
+            <h1>出生日期：{{ dateOfBirth }}</h1>
           </div>
         </el-main>
       </el-container>
     </el-container>
-
 
   </div>
 </template>
@@ -50,7 +50,9 @@
 <script lang="ts" setup>
 import { Message, Setting } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
+import { storeToRefs } from 'pinia';
 const store = useUserStore()
+const {age, name, dateOfBirth}  = storeToRefs(store)
 </script>
 <style lang="less" scoped>
 .box {
