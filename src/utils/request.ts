@@ -3,7 +3,7 @@ import { ElMessage, ElMessageBox } from 'element-plus'
 // 创建 axios 实例
 const service = axios.create({
   baseURL: process.env.VUE_APP_BASE_API,
-  timeout: 50000,
+  timeout: 15000,
   headers: { 'Content-Type': 'application/json;charset=utf-8' }
 });
 
@@ -13,7 +13,7 @@ service.interceptors.request.use(
     // 设置 token
     const token = ''
     if (token) {
-      config.headers.Authorization = token;
+      config.headers['X-Th-Token'] = token;
     }
     return config;
   },

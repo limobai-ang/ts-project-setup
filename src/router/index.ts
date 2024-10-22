@@ -4,18 +4,35 @@ import { useStore } from 'vuex'
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
-    redirect: '/home'
+    component: () => import('@/views/layout/index.vue'),
+    redirect: '/home',
+    children: [
+      {
+        path: '/home',
+        name: 'home',
+        component: () => import('@/views/home/index.vue'),
+        redirect: '/home/userlist',
+        children: [
+          {
+            path: '/home/userlist',
+            name: 'userList',
+            component: () => import('@/views/home/components/user/userList.vue'),
+          },
+          {
+            path: '/home/adduser',
+            name: 'addUser',
+            component: () => import('@/views/home/components/user/addUser.vue'),
+          }
+        ]
+      },
+      {
+        path: '/setting',
+        name: 'setting',
+        component: () => import('@/views/setting/index.vue')
+      },
+    ]
   },
-  {
-    path: '/home',
-    name: 'home',
-    component: () => import('@/views/home/index.vue')
-  },
-  {
-  path: '/user',
-    name: 'user',
-    component: () => import('@/views/user/index.vue')
-  },
+
   {
     path: '/login',
     name: 'login',
@@ -23,7 +40,7 @@ const routes: Array<RouteRecordRaw> = [
   },
   {
     path: '/:catchAll(.*)',
-    redirect: '/home'
+    redirect: '/login'
   }
 ]
 

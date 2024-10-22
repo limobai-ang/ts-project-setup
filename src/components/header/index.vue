@@ -9,7 +9,7 @@
     </div>
     <div class="flex-grow" />
     <el-menu-item index="/home">Home</el-menu-item>
-    <el-menu-item index="/user">User</el-menu-item>
+    <el-menu-item index="/setting">Setting</el-menu-item>
     <el-switch class="switch-el" v-model="isDark" :active-action-icon="Moon" :inactive-action-icon="Sunny"
       @change="toggleDark" />
   </el-menu>

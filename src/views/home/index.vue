@@ -8,24 +8,13 @@
               <template #title>
                 <el-icon>
                   <message />
-                </el-icon>Navigator One
+                </el-icon>菜单一
               </template>
               <el-menu-item-group>
-                <el-menu-item index="/home/1-1">Option 1</el-menu-item>
+                <el-menu-item index="/home/userlist">用户列表</el-menu-item>
               </el-menu-item-group>
-              <el-sub-menu index="1-2">
-                <template #title>Option2</template>
-                <el-menu-item index="1-2">Option 2-1</el-menu-item>
-              </el-sub-menu>
-            </el-sub-menu>
-            <el-sub-menu>
-              <template #title>
-                <el-icon>
-                  <setting />
-                </el-icon>Navigator Two
-              </template>
               <el-menu-item-group>
-                <el-menu-item index="2-1">Option 1</el-menu-item>
+                <el-menu-item index="/home/adduser">添加</el-menu-item>
               </el-menu-item-group>
             </el-sub-menu>
           </el-menu>
@@ -34,12 +23,7 @@
 
       <el-container>
         <el-main style="padding-top: 0;">
-          <div class="box">
-            <h1>Hello World</h1>
-            <h1>年龄：{{ age }}</h1>
-            <h1>姓名：{{ name }}</h1>
-            <h1>出生日期：{{ dateOfBirth }}</h1>
-          </div>
+          <router-view />
         </el-main>
       </el-container>
     </el-container>
@@ -48,11 +32,24 @@
 </template>
 
 <script lang="ts" setup>
+import { ref } from 'vue';
 import { Message, Setting } from '@element-plus/icons-vue'
 import { useUserStore } from '@/store/user'
 import { storeToRefs } from 'pinia';
+// import { getMetaIndicatorExtend } from '@/apis/home/home'
+// import { Indicator } from '@/apis/home/types'
 const store = useUserStore()
-const {age, name, dateOfBirth}  = storeToRefs(store)
+const { age, name, dateOfBirth } = storeToRefs(store)
+
+
+// const tableData = ref<Indicator[]>([]);
+// const getMetaIndicatorExtendFn = () => {
+//   getMetaIndicatorExtend(18610154).then(res => {
+//     tableData.value = res.data
+//   })
+// }
+// getMetaIndicatorExtendFn()
+
 </script>
 <style lang="less" scoped>
 .box {

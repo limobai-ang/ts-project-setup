@@ -1,19 +1,11 @@
 <template>
   <div class="app" id="app">
-    <el-container>
-      <el-header style="padding: 0;">
-        <Header></Header>
-      </el-header>
-      <el-main style="padding: 0;">
-        <router-view />
-      </el-main>
-    </el-container>
-
+    <router-view />
   </div>
 </template>
 
 <script lang="ts" setup>
-import Header from '@/components/header/index.vue'
+
 </script>
 
 <style lang="less">
