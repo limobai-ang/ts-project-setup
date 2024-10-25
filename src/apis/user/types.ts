@@ -1,12 +1,13 @@
 export interface User {
-    id: string;
+    _id: string;
     name: string;
     region: string;
-    date1: string; // Assuming this is a formatted date string
+    birthData: string;
     delivery: boolean;
-    type: string[]; // Array of strings, e.g., ['Online']
-    resource: string;
+    personalSituation: string[]; 
+    gender: string;
+    email: string;
     desc: string;
   }
   
-  export type UserWithoutId = Omit<User, 'id'>;
+  export type UserWithoutId = Omit<User, '_id'>;

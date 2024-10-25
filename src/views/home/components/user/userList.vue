@@ -1,22 +1,23 @@
 <template>
   <div class="user">
     <el-table :data="tableData" style="width: 100%">
-      <el-table-column prop="id" label="id" />
-      <el-table-column prop="name" label="name" />
-      <el-table-column prop="region" label="region" />
-      <el-table-column prop="date1" label="date1" />
-      <el-table-column prop="delivery" label="delivery">
+      <el-table-column prop="_id" label="用户编号" />
+      <el-table-column prop="name" label="用户名称" />
+      <el-table-column prop="region" label="地区" />
+      <el-table-column prop="gender" label="性别" />
+      <el-table-column prop="birthData" label="出生日期" />
+      <el-table-column prop="delivery" label="是否已婚">
         <template #default="scope">
           <el-tag>{{ scope.row.delivery ? '是' : '否' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="type" label="type">
+      <el-table-column prop="personalSituation" label="个人情况">
         <template #default="scope">
-          <el-tag v-for="item in scope.row.type">{{ item }}</el-tag>
+          <el-tag v-for="item in scope.row.personalSituation">{{ item }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column prop="resource" label="resource" />
-      <el-table-column prop="desc" label="desc" />
+      <el-table-column prop="email" label="电子邮箱" />
+      <el-table-column prop="desc" label="备注" />
       <el-table-column label="操作">
         <template #default="scope">
           <el-button type="primary" size="small">编辑</el-button>
@@ -41,7 +42,7 @@ const getUserListFn = () => {
 getUserListFn()
 
 const deleteData = (data: User) => {
-  delUser(data.id).then(res => {
+  delUser(data._id).then(res => {
     getUserListFn()
   })
 }
