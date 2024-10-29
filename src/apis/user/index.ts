@@ -11,11 +11,11 @@ export function getUserList(): AxiosPromise<User[]> {
     })
 }
 
-// 添加用户
+// 注册用户
 export function addUser(data: UserWithoutId ): AxiosPromise<Boolean> {
     return request({
         method: 'post',
-        url: `/users/addUser`,
+        url: `/auth/addUser`,
         data
     })
 }

@@ -1,11 +1,10 @@
 import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
-import { useStore } from 'vuex'
 
 const routes: Array<RouteRecordRaw> = [
   {
     path: '/',
     component: () => import('@/views/layout/index.vue'),
-    redirect: '/home',
+    redirect: '/login',
     children: [
       {
         path: '/home',
@@ -36,7 +35,7 @@ const routes: Array<RouteRecordRaw> = [
   {
     path: '/login',
     name: 'login',
-    component: import('@/views/login/index.vue')
+    component: () => import('@/views/login/index.vue')
   },
   {
     path: '/:catchAll(.*)',

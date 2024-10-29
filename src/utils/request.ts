@@ -1,5 +1,9 @@
 import axios, { InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { useAppStore } from '@/store/app'
+import { storeToRefs } from 'pinia'
+const appStore = useAppStore();
+const { token, isLoggedIn } = storeToRefs(appStore);
+
 // 创建 axios 实例
 const service = axios.create({
   baseURL: process.env.VUE_APP_BASE_API,
@@ -11,9 +15,8 @@ const service = axios.create({
 service.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     // 设置 token
-    const token = ''
-    if (token) {
-      config.headers['X-Th-Token'] = token;
+    if (token.value) {
+      config.headers['X-Token'] = token.value;
     }
     return config;
   },
@@ -28,31 +31,19 @@ service.interceptors.response.use(
     const { code, msg } = response.data;
     if (code == '200') {
       return response.data;
+    } else if (code == '401') {
+      ElMessageBox.confirm('当前页面已失效，请重新登录', '提示', {
+        confirmButtonText: '确定',
+        type: 'warning'
+      }).then(() => {
+        localStorage.clear();
+        window.location.href = '/';
+      });
+    } else {
+      return Promise.reject(new Error(msg || '系统错误'));
     }
-    // // 响应数据为二进制流处理(Excel导出)
-    // if (response.data instanceof ArrayBuffer) {
-    //   return response;
-    // }
-
-    ElMessage.error(msg || '系统出错');
-    return Promise.reject(new Error(msg || 'Error'));
   },
   (error: any) => {
-    if (error.response.data) {
-      const { code, msg } = error.response.data;
-      // token 过期,重新登录
-      if (code === '401') {
-        ElMessageBox.confirm('当前页面已失效，请重新登录', '提示', {
-          confirmButtonText: '确定',
-          type: 'warning'
-        }).then(() => {
-          localStorage.clear();
-          window.location.href = '/';
-        });
-      } else {
-        ElMessage.error(msg || '系统出错');
-      }
-    }
     return Promise.reject(error.message);
   }
 );
