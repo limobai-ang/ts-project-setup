@@ -27,3 +27,11 @@ export function delUser(id: string): AxiosPromise<Boolean> {
         url: `/users/deleteUser/${id}`
     })
 }
+
+// 获取用户信息
+export function getUserInfo(): AxiosPromise<User> {
+    return request({
+        method: 'get',
+        url: `/users/userInfo`
+    })
+}

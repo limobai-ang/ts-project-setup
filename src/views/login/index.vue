@@ -1,15 +1,23 @@
 <template>
   <div class="login-container">
     <el-form :model="loginForm" :rules="rules" ref="loginFormRef" label-width="80px" class="login-form">
-      <el-form-item label="用户名" prop="username">
-        <el-input v-model="loginForm.username" placeholder="请输入用户名"></el-input>
+      <el-form-item label="用户名" prop="name">
+        <el-input v-model="loginForm.name" placeholder="请输入用户名"></el-input>
       </el-form-item>
       <el-form-item label="密码" prop="password">
         <el-input v-model="loginForm.password" type="password" placeholder="请输入密码"></el-input>
       </el-form-item>
       <el-form-item>
-        <el-button type="primary" @click="submitForm">登录</el-button>
-        <el-button @click="resetForm">重置</el-button>
+        <div class="btn-rows">
+          <div>
+            <el-button type="primary" @click="submitForm">登录</el-button>
+            <el-button @click="resetForm">重置</el-button>
+          </div>
+          <div>
+            <el-button type="primary" link @click="toRegister">注册用户</el-button>
+          </div>
+        </div>
+
       </el-form-item>
     </el-form>
   </div>
@@ -18,21 +26,22 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue';
 import { userLogin } from '@/apis/auth'
+import { getUserInfo } from '@/apis/user'
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/app'
-import { storeToRefs } from 'pinia'
+
 const router = useRouter()
 const appStore = useAppStore();
 
 // 定义表单数据
 const loginForm = reactive({
-  username: '',
+  name: '',
   password: '',
 });
 
 // 表单验证规则
 const rules = {
-  username: [
+  name: [
     { required: true, message: '请输入用户名', trigger: 'blur' },
   ],
   password: [
@@ -56,10 +65,10 @@ const submitForm = () => {
             message: '登陆成功',
             type: 'success',
           })
-
           router.push({
             path: '/home'
           })
+          getUserInfoFn()
         } else {
           ElMessage({
             message: '登陆失败',
@@ -79,10 +88,24 @@ const submitForm = () => {
   });
 };
 
+// 获取用户信息
+const getUserInfoFn = () => {
+  getUserInfo().then(res => {
+    console.log(res, 'getUserInfo');
+
+  })
+}
+
 // 重置表单
 const resetForm = () => {
   loginFormRef.value?.resetFields();
 };
+
+const toRegister = () => {
+  router.push({
+    path: '/register'
+  })
+}
 </script>
 
 <style scoped>
@@ -97,5 +120,12 @@ const resetForm = () => {
 
 .login-form {
   margin-top: 20px;
+}
+
+.btn-rows {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
 }
 </style>

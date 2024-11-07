@@ -114,12 +114,12 @@ const onSubmit = async (formEl: FormInstance | undefined) => {
   if (!formEl) return
   await formEl.validate((valid, fields) => {
     if (valid) {
-      addUser(form).then(res => {
-        ElMessage({
-          message: '用户添加成功！',
-          type: 'success',
-        })
-      })
+      // addUser(form).then(res => {
+      //   ElMessage({
+      //     message: '用户添加成功！',
+      //     type: 'success',
+      //   })
+      // })
     } else {
       console.log('error submit!', fields)
     }
