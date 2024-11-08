@@ -1,6 +1,6 @@
 <template>
     <div class="spreadsheet-box">
-        <div class="box" id="x-spreadsheet-demo" ref="spreadsheetRef" style="width: 100%; height: 100%;">
+        <div class="box" id="x-spreadsheet-el" ref="spreadsheetRef" style="width: 100%; height: 100%;">
         </div>
     </div>
 </template>
@@ -26,14 +26,14 @@ onMounted(() => {
 
 
 const uninstall = () => {
-    var container = document.getElementById('x-spreadsheet-demo');
+    var container = document.getElementById('x-spreadsheet-el');
     container.innerHTML = '';
     spreadsheet = null
 }
 const init = () => {
 
     uninstall()
-    spreadsheet = new Spreadsheet("#x-spreadsheet-demo", {
+    spreadsheet = new Spreadsheet("#x-spreadsheet-el", {
         showToolbar: true,
         showBottomBar: true,
         showContextmenu: true,
@@ -217,19 +217,22 @@ function xtos(sdata) {
     return out
 }
 
-const exportJson = (data) => {
-    let new_wb = xtos(spreadsheet.getData())
-    const wsname = new_wb.SheetNames[0]; // 取第一sheet，如果由多个可以循环获取
-    const json = XLSX.utils.sheet_to_json(new_wb.Sheets[wsname]); // 直接调用方法将excel数据读取成json
-    return json
+const exportJson = () => { 
+    const new_wb = xtos(spreadsheet.getData())
+    new_wb.SheetNames.forEach(sheetName => {
+        new_wb.Sheets[sheetName] = XLSX.utils.sheet_to_json(new_wb.Sheets[sheetName]); 
+    })
+
+    return new_wb
 }
 
+const openSpreadsheetData = (sheetData) => {
+    spreadsheet.loadData(sheetData)
+}
 
-const openJson = (jsonData, sheetName = 'sheet1') => {
-
-    const worksheet = XLSX.utils.json_to_sheet(jsonData);
-
+const openJson = () => {
     const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.json_to_sheet(jsonData);
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
     let sheetData = stox(workbook)
@@ -277,12 +280,16 @@ const setRowAndCellDisabled = (rowIndex, cellIndex) => {
 }
 
 defineExpose({
+    utils: {
+        xtos,
+        stox
+    },
     exportExcel,
     openFile,
     exportJson,
     openJson,
     undo,
-    redo,
+    redo, 
     setRowAndCellDisabled
 })
 
