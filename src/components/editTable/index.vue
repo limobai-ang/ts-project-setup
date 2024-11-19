@@ -83,8 +83,6 @@ const init = () => {
 }
 
 const changeData = (data) => {
-    // console.log(data, 'data');
-
     emit('changeData', data)
 }
 const openFile = () => {
@@ -97,6 +95,27 @@ const openFile = () => {
         importExcel(files[0])
     }
     input.click();
+}
+
+function workbookToFile(workbook, fileName) {
+    // 第一步：将 Workbook 写入 ArrayBuffer
+    const arrayBuffer = XLSX.writeXLSX(workbook, {
+        bookType: 'xlsx',
+        type: 'array'
+    });
+
+    // 第二步：将 ArrayBuffer 转换为 Blob
+    const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+
+    // 第三步：将 Blob 转换为 File 对象
+    const file = new File([blob], fileName, { type: blob.type });
+    return file;
+}
+const exportFile = (fileName) => {
+    let new_wb = xtos(spreadsheet.getData())
+    return workbookToFile(new_wb, fileName)
+
+
 }
 
 // 处理数据
@@ -217,17 +236,20 @@ function xtos(sdata) {
     return out
 }
 
-const exportJson = () => { 
+const exportJson = () => {
     const new_wb = xtos(spreadsheet.getData())
     new_wb.SheetNames.forEach(sheetName => {
-        new_wb.Sheets[sheetName] = XLSX.utils.sheet_to_json(new_wb.Sheets[sheetName]); 
+        new_wb.Sheets[sheetName] = XLSX.utils.sheet_to_json(new_wb.Sheets[sheetName]);
     })
 
     return new_wb
 }
 
-const openSpreadsheetData = (sheetData) => {
+const setSpreadsheetData = (sheetData) => {
     spreadsheet.loadData(sheetData)
+}
+const getSpreadsheetData = () => {
+    return spreadsheet.getData()
 }
 
 const openJson = () => {
@@ -279,18 +301,44 @@ const setRowAndCellDisabled = (rowIndex, cellIndex) => {
 
 }
 
+// 获取表头的函数
+function getHeaders() {
+    const data = spreadsheet.getData()
+    const headers = []
+    data.forEach((item, index) => {
+        const column = []
+        const obj = {}
+        const headerRow = item.rows[0]; // 假设第 0 行是表头
+        // 遍历表头行的单元格
+        for (let cellKey in headerRow.cells) {
+            column.push(headerRow.cells[cellKey].text);
+        }
+
+        obj.name = item.name
+        obj.column = column
+
+        headers.push(obj)
+    })
+    return headers
+}
+
 defineExpose({
     utils: {
         xtos,
         stox
     },
+    importExcel,
     exportExcel,
     openFile,
     exportJson,
     openJson,
     undo,
-    redo, 
-    setRowAndCellDisabled
+    redo,
+    setRowAndCellDisabled,
+    exportFile,
+    getHeaders,
+    setSpreadsheetData,
+    getSpreadsheetData
 })
 
 </script>
@@ -304,6 +352,7 @@ defineExpose({
 .x-spreadsheet-editor {
     z-index: 9999 !important;
 }
+
 // .x-spreadsheet-toolbar {
 //     width: 100% !important;
 // }
@@ -311,6 +360,7 @@ defineExpose({
     .x-spreadsheet-toolbar-btn:nth-child(+n+3) {
         display: none;
     }
+
     .x-spreadsheet-toolbar-divider {
         display: none;
     }

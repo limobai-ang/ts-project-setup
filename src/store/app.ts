@@ -20,4 +20,10 @@ export const useAppStore = defineStore('app', () => {
         clearToken,
         isLoggedIn,
     };
+}, {
+    persist: {
+        key: 'userStore',
+        storage: localStorage, // 也可以使用 sessionStorage
+        pick: ['token']
+    },
 });
