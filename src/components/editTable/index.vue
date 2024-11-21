@@ -12,7 +12,9 @@ import Spreadsheet from "x-data-spreadsheet";
 import zhCN from 'x-data-spreadsheet/src/locale/zh-cn';
 
 import * as XLSX from 'xlsx'
+import { workbookToFile} from '@/utils/index'
 const emit = defineEmits()
+
 let spreadsheet = null
 const spreadsheetRef = ref()
 const totalRows = ref(100)
@@ -97,20 +99,7 @@ const openFile = () => {
     input.click();
 }
 
-function workbookToFile(workbook, fileName) {
-    // 第一步：将 Workbook 写入 ArrayBuffer
-    const arrayBuffer = XLSX.writeXLSX(workbook, {
-        bookType: 'xlsx',
-        type: 'array'
-    });
 
-    // 第二步：将 ArrayBuffer 转换为 Blob
-    const blob = new Blob([arrayBuffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-
-    // 第三步：将 Blob 转换为 File 对象
-    const file = new File([blob], fileName, { type: blob.type });
-    return file;
-}
 const exportFile = (fileName) => {
     let new_wb = xtos(spreadsheet.getData())
     return workbookToFile(new_wb, fileName)

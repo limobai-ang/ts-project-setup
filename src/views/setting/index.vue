@@ -25,29 +25,27 @@
         </div>
 
 
-        <el-dialog v-model="dialogFormVisible" title="Shipping address" width="500">
+        <el-dialog v-model="dialogFormVisible" title="编辑数据" width="500">
             <el-form :model="form">
-                <el-form-item label="作用Sheet">
+                <el-form-item label="工作表">
                     <el-select v-model="form.sheet" placeholder="Please select a zone">
                         <el-option v-for="item in fileSheetListByColmun" :label="item.name" :value="item.name" />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="作用Sheet">
+                <el-form-item label="列头">
                     <el-select v-model="form.tableColumn" placeholder="Please select a zone">
                         <el-option v-for="item in selectColmunList" :label="item" :value="item" />
                     </el-select>
                 </el-form-item>
-                <el-form-item label="变更的值">
+                <el-form-item label="变更值">
                     <el-input v-model="form.value" autocomplete="off" />
                 </el-form-item>
 
             </el-form>
             <template #footer>
                 <div class="dialog-footer">
-                    <el-button @click="dialogFormVisible = false">Cancel</el-button>
-                    <el-button type="primary" @click="dialogFormVisible = false">
-                        Confirm
-                    </el-button>
+                    <el-button @click="dialogFormVisible = false">取消</el-button>
+                    <el-button type="primary" @click="editTableFormSubmit">确定</el-button>
                 </div>
             </template>
         </el-dialog>
@@ -59,23 +57,33 @@ import { nextTick, ref, reactive, computed } from 'vue'
 import type { UploadInstance, UploadFile, UploadFiles, UploadRawFile } from 'element-plus'
 import { read, writeFileXLSX, utils, WorkBook, writeFile, writeXLSX } from "xlsx";
 import editTable from '@/components/editTable/index.vue'
+import { workbookToFile, WorkbookJson, json_to_File } from '@/utils/index'
+
+interface SheetColmun {
+    name: string,
+    column: Array<string>
+}
+
+
+interface FromData {
+    sheet: string | Array<string>,
+    tableColumn: string | Array<string>,
+    value: string
+}
+
+
 const uploadRef = ref<UploadInstance>()
 
 const fileList = ref<UploadFiles>([])
 const activeFile = ref<UploadFile | null>(null)
 
 const dialogFormVisible = ref(false)
-const form = reactive({
+const form = reactive<FromData>({
     sheet: [],
     tableColumn: [],
     value: ''
 })
 
-
-interface WorkbookJson {
-    SheetNames: string[];
-    Sheets: { [key: string]: any[] }; // 定义 Sheets 为带有字符串键和任意数组值的对象
-}
 
 const beforeUpload = (rawFile: UploadRawFile) => {
     return false
@@ -101,10 +109,6 @@ const importExcel = (activeFile: UploadFile) => {
     EditTableRef.value.importExcel(activeFile.raw)
 }
 
-interface SheetColmun {
-    name: string,
-    column: Array<string>
-}
 const fileSheetListByColmun = ref<SheetColmun[]>([])
 
 const selectColmunList = computed(() => {
@@ -126,6 +130,39 @@ const editData = () => {
     fileSheetListByColmun.value = EditTableRef.value.getHeaders()
 
     dialogFormVisible.value = true
+}
+
+// 计算方法
+const calculationHandler = () => {
+    const { sheet, tableColumn, value } = form
+    const sheetNameList: Array<string> = Array.isArray(sheet) ? sheet : [sheet]
+    const columnList: Array<string> = Array.isArray(tableColumn) ? tableColumn : [tableColumn]
+
+    const jsonData: WorkbookJson = EditTableRef.value.exportJson()
+
+    sheetNameList.forEach(item => {
+        jsonData.Sheets[item].forEach((data) => {
+            columnList.forEach(column => {
+                data[column] = value
+            })
+        })
+    })
+
+    return jsonData
+}
+const editTableFormSubmit = () => {
+    
+    const newData = calculationHandler()
+
+    const new_wb = json_to_File(newData)
+    const file: UploadRawFile = workbookToFile(new_wb, activeFile.value ? activeFile.value.name : 'file')
+    
+    if(activeFile.value) {
+        activeFile.value.raw = file
+        importExcel(activeFile.value)
+    }
+    
+    dialogFormVisible.value = false
 }
 const changeData = (data: any) => {
 
