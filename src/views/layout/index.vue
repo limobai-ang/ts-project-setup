@@ -1,18 +1,20 @@
 <template>
-    <div>
-        <el-container>
-            <el-header style="padding: 0;">
-                <Header></Header>
-            </el-header>
-            <el-main style="padding: 0;">
-                <router-view />
-            </el-main>
-        </el-container>
-    </div>
+    <el-container class="layout-container">
+        <el-header style="padding: 0;">
+            <Header></Header>
+        </el-header>
+        <el-main style="padding: 0;">
+            <router-view />
+        </el-main>
+    </el-container>
 </template>
 
 <script setup lang="ts">
 import Header from '@/components/header/index.vue'
 </script>
 
-<style scoped></style>
+<style scoped>
+.layout-container {
+    height: 100%;
+}
+</style>

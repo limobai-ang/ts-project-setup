@@ -28,7 +28,7 @@ service.interceptors.request.use(
 // 响应拦截器
 service.interceptors.response.use(
   (response: AxiosResponse) => {
-    const { code, msg } = response.data;
+    const { code, message } = response.data;
     if (code == '200') {
       return response.data;
     } else if (code == '401') {
@@ -40,7 +40,8 @@ service.interceptors.response.use(
         window.location.href = '/';
       });
     } else {
-      return Promise.reject(new Error(msg || '系统错误'));
+      ElMessage.error(message)
+      return Promise.reject(new Error(message || '系统错误'));
     }
   },
   (error: any) => {

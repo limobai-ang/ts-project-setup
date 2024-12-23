@@ -1,27 +1,25 @@
-import moment from 'moment'
+
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
-
+import { ref } from 'vue'
+import { User } from '@/apis/user/types'
 export const useUserStore = defineStore('user', () => {
-    const name = ref<string>('张三')
-    const age = ref<number>(19)
-    const setName =  (data: string) : void => {
-        name.value= data
-    }
-    const addAge = () => {
-        age.value++
+    const userInfo = ref<User | null>(null)
+    const setUserInfo = (user: User) => {
+        userInfo.value = user
     }
 
-    const dateOfBirth = computed(() => {
-        const date = moment().subtract(age.value, 'years');
-        return date.format('YYYY-MM-DD')
-    })
+    const clearUserInfo = () => {
+        userInfo.value = null
+    }
     return {
-        name,
-        age,
-        dateOfBirth,
-        addAge,
-        setName
+        userInfo,
+        setUserInfo,
+        clearUserInfo
     }
-
+},{
+    persist: {
+        key: 'userInfo',
+        storage: localStorage, // 也可以使用 sessionStorage
+        pick: ['userInfo']
+    },
 })

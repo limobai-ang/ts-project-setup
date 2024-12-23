@@ -1,10 +1,9 @@
 <template>
   <div class="home">
-    <el-container class="layout-container-demo">
+    <el-container class="home-container">
       <el-aside width="200px">
-        <el-scrollbar>
-          <el-menu :router="true">
-            <el-sub-menu>
+          <el-menu :router="true" :default-active="$route.path" :default-openeds="['1']" class="home-menu">
+            <el-sub-menu index="1">
               <template #title>
                 <el-icon>
                   <message />
@@ -16,9 +15,11 @@
               <el-menu-item-group>
                 <el-menu-item index="/home/adduser">个人信息</el-menu-item>
               </el-menu-item-group>
+              <el-menu-item-group>
+                <el-menu-item index="/home/chatRoom">webSocket</el-menu-item>
+              </el-menu-item-group>
             </el-sub-menu>
           </el-menu>
-        </el-scrollbar>
       </el-aside>
 
       <el-container>
@@ -52,17 +53,7 @@ const { age, name, dateOfBirth } = storeToRefs(store)
 
 </script>
 <style lang="less" scoped>
-.box {
-  width: 100%;
-  height: 300px;
-  border: 5px solid var(--demo-border);
-  background-color: var(--demo-bg);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  h1 {
-    color: var(--demo-text);
-  }
+.home, .home-container, .home-menu {
+  height: 100%;
 }
 </style>

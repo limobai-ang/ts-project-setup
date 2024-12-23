@@ -29,7 +29,8 @@ import { userLogin } from '@/apis/auth'
 import { getUserInfo } from '@/apis/user'
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/app'
-
+import { useUserStore } from '@/store/user'; // 引入 Pinia Store
+import { User } from '@/apis/user/types';
 const router = useRouter()
 const appStore = useAppStore();
 
@@ -90,9 +91,9 @@ const submitForm = () => {
 
 // 获取用户信息
 const getUserInfoFn = () => {
+  const userStore = useUserStore(); // 获取 Store 实例
   getUserInfo().then(res => {
-    console.log(res, 'getUserInfo');
-
+    userStore.setUserInfo(res.data); // 将用户信息存储到 Pinia
   })
 }
 
@@ -111,11 +112,15 @@ const toRegister = () => {
 <style scoped>
 .login-container {
   width: 360px;
-  margin: 100px auto;
   padding: 40px 30px;
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
   border-radius: 8px;
   background-color: #fff;
+  position: relative;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
 }
 
 .login-form {

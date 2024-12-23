@@ -10,6 +10,8 @@
 
             <el-button type="primary" @click="editData">编辑</el-button>
             <el-button type="primary" @click="saveData">保存</el-button>
+            <el-button type="success" @click="uploadFile">上传</el-button>
+
             <!-- <el-button type="primary" @click="exportJson">导出json</el-button> -->
         </div>
 
@@ -53,6 +55,7 @@
 </template>
 
 <script setup lang="ts">
+import { uploadFileWorld } from '@/apis/home/index'
 import { nextTick, ref, reactive, computed } from 'vue'
 import type { UploadInstance, UploadFile, UploadFiles, UploadRawFile } from 'element-plus'
 import { read, writeFileXLSX, utils, WorkBook, writeFile, writeXLSX } from "xlsx";
@@ -93,6 +96,9 @@ const handleFileChange = (uploadFile: UploadFile, uploadFiles: UploadFiles) => {
 
     if (fileList.value.length && !activeFile.value) {
         activeFile.value = fileList.value[0]
+
+        console.log(activeFile.value, 'activeFile.value');
+        
         importExcel(activeFile.value)
     }
 }
@@ -151,17 +157,17 @@ const calculationHandler = () => {
     return jsonData
 }
 const editTableFormSubmit = () => {
-    
+
     const newData = calculationHandler()
 
     const new_wb = json_to_File(newData)
     const file: UploadRawFile = workbookToFile(new_wb, activeFile.value ? activeFile.value.name : 'file')
-    
-    if(activeFile.value) {
+
+    if (activeFile.value) {
         activeFile.value.raw = file
         importExcel(activeFile.value)
     }
-    
+
     dialogFormVisible.value = false
 }
 const changeData = (data: any) => {
@@ -190,6 +196,31 @@ const saveData = () => {
     console.log(file, 'file');
 
     // downloadFile(file)
+}
+
+const uploadFile = () => {
+    const file = EditTableRef.value.exportFile('测试上传文件.xlsx')
+    console.log(file, 'file');
+    
+    if (!file) {
+        console.error('文件不存在');
+        return;
+    }
+    // 创建 FormData 并追加文件
+    const formData = new FormData();
+
+    formData.append('file', file); // 将文件添加到 FormData 对象中
+
+    // 上传的网络接口
+    uploadFileWorld(formData)
+        .then(response => {
+            console.log('上传成功:', response);
+            // 可以在这里处理上传成功后的逻辑
+        })
+        .catch(error => {
+            console.error('上传失败:', error);
+            // 可以在这里处理上传失败的逻辑
+        });
 }
 
 
