@@ -7,7 +7,7 @@
               <template #title>
                 <el-icon>
                   <message />
-                </el-icon>菜单一
+                </el-icon>功能菜单
               </template>
               <el-menu-item-group>
                 <el-menu-item index="/home/userlist">用户列表</el-menu-item>
@@ -17,6 +17,9 @@
               </el-menu-item-group>
               <el-menu-item-group>
                 <el-menu-item index="/home/chatRoom">webSocket</el-menu-item>
+              </el-menu-item-group>
+              <el-menu-item-group>
+                <el-menu-item index="/home/cesium">cesium</el-menu-item>
               </el-menu-item-group>
             </el-sub-menu>
           </el-menu>
