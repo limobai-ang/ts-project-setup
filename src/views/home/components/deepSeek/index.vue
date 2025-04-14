@@ -1,28 +1,25 @@
 <template>
   <div class="chat-container">
+    <div class="welcome-container">
+      <Welcome variant="borderless"
+        icon="https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*s5sNRo5LjfQAAAAAAAAAAAAADgCCAQ/fmt.webp"
+        title="Hello, I'm Ant Design X"
+        description="Base on Ant Design, AGI product interface solution, create a better intelligent vision~">
+        <template #extra>
+          <el-button :icon="Edit" />
+          <el-button :icon="Share" />
+        </template>
+      </Welcome>
+    </div>
     <!-- 消息列表区域 -->
     <div class="messages" ref="messagesContainer">
-      <el-scrollbar height="100%">
-        <div v-for="msg in messages" :key="msg.id" :class="['message', msg.role]">
-          <div class="avatar">
-            <!-- 根据角色显示不同头像 -->
-            <el-avatar v-if="msg.role === 'assistant'"
-              src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-            <el-avatar v-else src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-          </div>
-          <!-- 使用 v-html 渲染 Markdown 转换后的 HTML -->
-          <div class="user-message" v-if="msg.role === 'user'" v-text="msg.content"></div>
-          <div class="markdown-body" v-else v-html="md.render(msg.content)"></div>
-        </div>
-      </el-scrollbar>
-
+      <BubbleList ref="listRef" :style="{ maxHeight: '600px' }" :roles="rolesAsObject" :items="messages"
+        :auto-scroll="true" />
     </div>
 
     <!-- 输入区域 -->
     <div class="input-area">
-      <el-input v-model="newMessage" type="textarea" rows="2" placeholder="请输入你的消息..."
-        @keyup.enter.exact="sendMessage" />
-      <el-button @click="sendMessage" type="primary">发送</el-button>
+      <Sender v-model:value="newMessage" :auto-size="{ minRows: 2, maxRows: 6 }" @submit="sendMessage" />
     </div>
   </div>
 </template>
@@ -33,10 +30,33 @@ import { searchAI } from '@/apis/deepSeek/index'
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css"; // 代码高亮主题
+import { Edit, Share } from '@element-plus/icons-vue'
+import { BubbleList, Welcome, Sender, BubbleListProps } from 'ant-design-x-vue';
+import { UserOutlined } from '@ant-design/icons-vue';
+
+import { h } from 'vue';
+import { ElButton } from 'element-plus';
+
+const rolesAsObject: BubbleListProps['roles'] = {
+  ai: {
+    placement: 'start',
+    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    typing: { step: 5, interval: 20 },
+    style: {
+      maxWidth: '600px',
+    },
+  },
+  user: {
+    placement: 'end',
+    avatar: { icon: h(UserOutlined), style: { background: '#87d068' } },
+  },
+};
+
+
 // 定义消息接口
 interface Message {
-  id: number;
-  role: 'user' | 'assistant';
+  key: number;
+  role: 'user' | 'ai';
   content: string;
   timestamp?: Date;
 }
@@ -44,8 +64,8 @@ interface Message {
 // 消息列表和输入消息
 const messages = ref<Message[]>([
   {
-    id: 1,
-    role: 'assistant',
+    key: 1,
+    role: 'ai',
     content: '你好，我是 ChatGPT，有什么我可以帮助你的吗？'
   }
 ])
@@ -75,7 +95,7 @@ const sendMessage = async () => {
   const content = newMessage.value.trim()
   // 添加用户消息
   messages.value.push({
-    id: messageId++,
+    key: messageId++,
     role: 'user',
     content,
     timestamp: new Date()
@@ -85,19 +105,19 @@ const sendMessage = async () => {
 
   // 模拟调用接口获取回复（实际项目中请调用后端 API）
   try {
-    const reply = await searchAI({ content})
+    const reply = await searchAI({ content })
     console.log(reply, 'reply');
-    
+
     messages.value.push({
-      id: messageId++,
-      role: 'assistant',
+      key: messageId++,
+      role: 'ai',
       content: reply.data,
       timestamp: new Date()
     })
   } catch (error) {
     messages.value.push({
-      id: messageId++,
-      role: 'assistant',
+      key: messageId++,
+      role: 'ai',
       content: '对不起，服务暂时不可用。',
       timestamp: new Date()
     })
@@ -122,89 +142,26 @@ const md: MarkdownIt = new MarkdownIt({
 
 <style scoped>
 .chat-container {
+  height: 100%;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0px auto;
+  box-sizing: border-box;
   display: flex;
   flex-direction: column;
-  height: 100%;
-  /* border: 1px solid #e0e0e0; */
+  padding: 24px;
+  gap: 16px;
   font-family: sans-serif;
 }
 
-.avatar {
-  width: 40px;
-  height: 40px;
-  margin: 0 10px;
+.welcome-container {
+  padding: 2% 0;
 }
+
 
 /* 消息列表区域 */
 .messages {
-  flex: 1;
-  height: 90%;
-  padding: 10px;
+  flex: 1 1 0%;
 }
 
-/* 单条消息样式 */
-.message {
-  display: flex;
-  margin-bottom: 15px;
-  opacity: 1;
-  transition: opacity 0.3s ease;
-}
-
-.message-enter-from,
-.message-leave-to {
-  opacity: 0;
-}
-
-.message.user {
-  flex-direction: row-reverse;
-  text-align: right;
-}
-
-.message.assistant {
-  flex-direction: row;
-  margin-right: 10px;
-}
-
-.user-message {
-  color: #262626;
-  box-sizing: border-box;
-  white-space: pre-wrap;
-  word-break: break-word;
-  background-color: #eff6ff;
-  border-radius: 14px;
-  max-width: calc(100% - 48px);
-  padding: 10px 20px;
-}
-
-/* 输入区域 */
-.input-area {
-  display: flex;
-  padding: 10px;
-  border-top: 1px solid #e0e0e0;
-  background-color: #fff;
-}
-
-.input-area textarea {
-  flex: 1;
-  resize: none;
-  padding: 10px;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  font-size: 14px;
-}
-
-.input-area button {
-  margin-left: 10px;
-  padding: 10px 20px;
-  background-color: #409eff;
-  border: none;
-  color: #fff;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-}
-
-.input-area button:hover {
-  background-color: #66b1ff;
-}
 </style>

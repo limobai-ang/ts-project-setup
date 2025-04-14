@@ -19,6 +19,9 @@
                 <el-menu-item index="/home/chatRoom">webSocket</el-menu-item>
               </el-menu-item-group>
               <el-menu-item-group>
+                <el-menu-item index="/home/deepSeek">deepSeek</el-menu-item>
+              </el-menu-item-group>
+              <el-menu-item-group>
                 <el-menu-item index="/home/cesium">cesium</el-menu-item>
               </el-menu-item-group>
             </el-sub-menu>
