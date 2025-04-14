@@ -9,6 +9,7 @@
   "dependencies": {
     "@vueuse/core": "^10.3.0",
     "axios": "^1.4.0",
+    "cesium": "^1.127.0",
     "core-js": "^3.8.3",
     "element-plus": "^2.3.9",
     "github-markdown-css": "^5.8.1",
