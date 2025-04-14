@@ -32,7 +32,6 @@
 import { User } from '@/apis/user/types'
 import { getUserList, delUser } from '@/apis/user'
 import { ref } from 'vue';
-
 const tableData = ref<User[]>([])
 const getUserListFn = () => {
   getUserList().then(res => {

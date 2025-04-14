@@ -26,6 +26,11 @@ const routes: Array<RouteRecordRaw> = [
             path: '/home/chatRoom',
             name: 'chatRoom',
             component: () => import('@/views/home/components/chatRoom/index.vue'),
+          },
+          {
+            path: '/home/deepSeek',
+            name: 'deepSeek',
+            component: () => import('@/views/home/components/deepSeek/index.vue'),
           }
         ]
       },

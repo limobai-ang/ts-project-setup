@@ -7,7 +7,7 @@ const { token, isLoggedIn } = storeToRefs(appStore);
 // 创建 axios 实例
 const service = axios.create({
   baseURL: process.env.VUE_APP_BASE_API,
-  timeout: 15000,
+  // timeout: 15000,
   headers: { 'Content-Type': 'application/json;charset=utf-8' }
 });
 

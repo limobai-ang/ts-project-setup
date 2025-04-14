@@ -18,13 +18,17 @@
               <el-menu-item-group>
                 <el-menu-item index="/home/chatRoom">webSocket</el-menu-item>
               </el-menu-item-group>
+              <el-menu-item-group>
+                <el-menu-item index="/home/deepSeek">deepSeek</el-menu-item>
+              </el-menu-item-group>
             </el-sub-menu>
           </el-menu>
       </el-aside>
 
       <el-container>
         <el-main style="padding-top: 0;">
-          <router-view />
+          <router-view @click="() => {console.log('1111');
+          }" />
         </el-main>
       </el-container>
     </el-container>
@@ -39,8 +43,8 @@ import { useUserStore } from '@/store/user'
 import { storeToRefs } from 'pinia';
 // import { getMetaIndicatorExtend } from '@/apis/home/home'
 // import { Indicator } from '@/apis/home/types'
-const store = useUserStore()
-const { age, name, dateOfBirth } = storeToRefs(store)
+// const store = useUserStore()
+// const { age, name, dateOfBirth } = storeToRefs(store)
 
 
 // const tableData = ref<Indicator[]>([]);
