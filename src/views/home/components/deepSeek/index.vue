@@ -33,24 +33,8 @@ import "highlight.js/styles/github.css"; // 代码高亮主题
 import { Edit, Share } from '@element-plus/icons-vue'
 import { BubbleList, Welcome, Sender, BubbleListProps } from 'ant-design-x-vue';
 import { UserOutlined } from '@ant-design/icons-vue';
-
 import { h } from 'vue';
 import { ElButton } from 'element-plus';
-
-const rolesAsObject: BubbleListProps['roles'] = {
-  ai: {
-    placement: 'start',
-    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
-    typing: { step: 5, interval: 20 },
-    style: {
-      maxWidth: '600px',
-    },
-  },
-  user: {
-    placement: 'end',
-    avatar: { icon: h(UserOutlined), style: { background: '#87d068' } },
-  },
-};
 
 
 // 定义消息接口
@@ -89,42 +73,6 @@ const scrollToBottom = () => {
   })
 }
 
-// 发送消息，并模拟获取助手回复
-const sendMessage = async () => {
-  if (!newMessage.value.trim()) return
-  const content = newMessage.value.trim()
-  // 添加用户消息
-  messages.value.push({
-    key: messageId++,
-    role: 'user',
-    content,
-    timestamp: new Date()
-  })
-  newMessage.value = ''
-  scrollToBottom()
-
-  // 模拟调用接口获取回复（实际项目中请调用后端 API）
-  try {
-    const reply = await searchAI({ content })
-    console.log(reply, 'reply');
-
-    messages.value.push({
-      key: messageId++,
-      role: 'ai',
-      content: reply.data,
-      timestamp: new Date()
-    })
-  } catch (error) {
-    messages.value.push({
-      key: messageId++,
-      role: 'ai',
-      content: '对不起，服务暂时不可用。',
-      timestamp: new Date()
-    })
-  }
-  scrollToBottom()
-}
-
 // 配置 markdown-it，支持代码高亮
 const md: MarkdownIt = new MarkdownIt({
   highlight: (str: any, lang: any) => {
@@ -137,6 +85,77 @@ const md: MarkdownIt = new MarkdownIt({
   }
 });
 
+const renderMarkdown: BubbleProps['messageRender'] = (content) => {
+  return h('div', { innerHTML: md.render(content) })
+}
+
+
+const rolesAsObject: BubbleListProps['roles'] = {
+  ai: {
+    placement: 'start',
+    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    typing: { step: 5, interval: 20 },
+    style: {
+      maxWidth: '600px',
+    },
+    messageRender: renderMarkdown,
+  },
+  user: {
+    placement: 'end',
+    avatar: { icon: h(UserOutlined), style: { background: '#87d068' } },
+  },
+};
+// 发送消息，并模拟获取助手回复
+const sendMessage = async () => {
+  if (!newMessage.value.trim()) return
+  const content = newMessage.value.trim()
+  // 添加用户消息
+  messages.value.push({
+    key: messageId++,
+    role: 'user',
+    content,
+    timestamp: new Date()
+  })
+  newMessage.value = ''
+
+
+  // 添加助手回复login状态
+  messages.value.push({
+    key: messageId++,
+    role: 'ai',
+    loading: true,
+    timestamp: new Date()
+  })
+
+  scrollToBottom()
+
+  // 模拟调用接口获取回复（实际项目中请调用后端 API）
+  try {
+    const reply = await searchAI({ content })
+    // 删除助手的 loading 状态
+    messages.value.pop()
+
+    messages.value.push({
+      key: messageId++,
+      role: 'ai',
+      content: reply.data,
+
+      timestamp: new Date()
+    })
+  } catch (error) {
+    // 删除助手的 loading 状态
+    messages.value.pop()
+
+    messages.value.push({
+      key: messageId++,
+      role: 'ai',
+      content: '对不起，服务暂时不可用。',
+      timestamp: new Date()
+    })
+  }
+
+  scrollToBottom()
+}
 
 </script>
 
@@ -163,5 +182,4 @@ const md: MarkdownIt = new MarkdownIt({
 .messages {
   flex: 1 1 0%;
 }
-
 </style>

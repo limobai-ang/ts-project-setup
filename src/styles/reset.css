@@ -37,6 +37,10 @@ a {
   text-decoration: inherit;
 }
 
+p {
+  margin: 0;
+}
+
 img,
 svg {
   display: inline-block;
