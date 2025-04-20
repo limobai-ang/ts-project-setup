@@ -19,21 +19,21 @@
 
     <!-- 输入区域 -->
     <div class="input-area">
-      <Sender v-model:value="newMessage" :auto-size="{ minRows: 2, maxRows: 6 }" @submit="sendMessage" />
+      <Sender v-model:value="newMessage" :auto-size="{ minRows: 2, maxRows: 6 }" :allow-speech="speechConfig"
+        @submit="sendMessage" />
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick } from 'vue'
-import { searchAI } from '@/apis/deepSeek/index'
+import { ref, nextTick, h, computed} from 'vue'
+import { searchAI, voiceToText } from '@/apis/deepSeek/index'
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css"; // 代码高亮主题
 import { Edit, Share } from '@element-plus/icons-vue'
 import { BubbleList, Welcome, Sender, BubbleListProps } from 'ant-design-x-vue';
 import { UserOutlined } from '@ant-design/icons-vue';
-import { h } from 'vue';
 import { ElButton } from 'element-plus';
 
 
@@ -105,6 +105,61 @@ const rolesAsObject: BubbleListProps['roles'] = {
     avatar: { icon: h(UserOutlined), style: { background: '#87d068' } },
   },
 };
+
+
+
+// 语音识别配置
+let mediaRecorder: MediaRecorder
+let chunks: Blob[] = []
+
+const startRecording = async () => {
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  mediaRecorder = new MediaRecorder(stream)
+
+  mediaRecorder.ondataavailable = (e) => {
+    chunks.push(e.data)
+  }
+
+  mediaRecorder.onstop = async () => {
+    const audioBlob = new Blob(chunks, { type: 'audio/webm' })
+    chunks = []
+
+    const formData = new FormData()
+    formData.append('file', audioBlob, 'record.webm')
+
+    const resuleData = await voiceToText(formData)
+    console.log(resuleData, 'resuleData ');
+    if (resuleData.data.StatusStr === 'success') {
+      // 识别成功
+      newMessage.value = newMessage.value + resuleData.data.ResultDetail[0].FinalSentence
+    }
+  }
+
+  mediaRecorder.start()
+}
+
+const stopRecording = () => {
+  mediaRecorder?.stop()
+}
+
+const recording = ref(false);
+const speechConfig = computed(
+  () => ({
+    // When setting `recording`, the built-in speech recognition feature will be disabled
+    recording: recording.value,
+    onRecordingChange: (nextRecording: boolean) => {
+      if (nextRecording) {
+        // console.log('开启语言输入');
+        startRecording()
+      } else {
+        // console.log('关闭语言输入');
+        stopRecording()
+      }
+      recording.value = nextRecording;
+    },
+  })
+);
+
 // 发送消息，并模拟获取助手回复
 const sendMessage = async () => {
   if (!newMessage.value.trim()) return
