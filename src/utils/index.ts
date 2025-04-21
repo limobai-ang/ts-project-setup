@@ -32,3 +32,17 @@ export const json_to_File = (jsonData: WorkbookJson) => {
 
     return workbook
 }
+
+// 函数用于将 Float32Array 转换为 Int16Array
+export function float32ToInt16(float32Array: Float32Array): ArrayBuffer {
+  const l = float32Array.length
+  const buffer = new ArrayBuffer(l * 2)
+  const view = new DataView(buffer)
+
+  for (let i = 0; i < l; i++) {
+    let s = Math.max(-1, Math.min(1, float32Array[i]))
+    view.setInt16(i * 2, s < 0 ? s * 0x8000 : s * 0x7FFF, true) // Little-endian
+  }
+
+  return buffer
+}

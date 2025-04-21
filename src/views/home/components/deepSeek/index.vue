@@ -26,8 +26,8 @@
 </template>
 
 <script setup lang="ts">
-import { ref, nextTick, h, computed} from 'vue'
-import { searchAI, voiceToText } from '@/apis/deepSeek/index'
+import { ref, nextTick, h, computed, onMounted } from 'vue'
+import { searchAI, voiceToText, getConnectUrl } from '@/apis/deepSeek/index'
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css"; // 代码高亮主题
@@ -35,7 +35,7 @@ import { Edit, Share } from '@element-plus/icons-vue'
 import { BubbleList, Welcome, Sender, BubbleListProps } from 'ant-design-x-vue';
 import { UserOutlined } from '@ant-design/icons-vue';
 import { ElButton } from 'element-plus';
-
+import { float32ToInt16 } from "@/utils/index";
 
 // 定义消息接口
 interface Message {
@@ -107,39 +107,89 @@ const rolesAsObject: BubbleListProps['roles'] = {
 };
 
 
+// 初始化连接
+let ws: WebSocket | null = null
+const initWebSocket = (connectUrl) => {
+  // 初始化连接（只 new 一次）
+  ws = new WebSocket(connectUrl);
 
-// 语音识别配置
-let mediaRecorder: MediaRecorder
-let chunks: Blob[] = []
+  ws.onopen = () => {
+    // 开始录音并发送音频
+    console.log('语音识别服务连接成功');
 
-const startRecording = async () => {
-  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-  mediaRecorder = new MediaRecorder(stream)
+  };
 
-  mediaRecorder.ondataavailable = (e) => {
-    chunks.push(e.data)
-  }
-
-  mediaRecorder.onstop = async () => {
-    const audioBlob = new Blob(chunks, { type: 'audio/webm' })
-    chunks = []
-
-    const formData = new FormData()
-    formData.append('file', audioBlob, 'record.webm')
-
-    const resuleData = await voiceToText(formData)
-    console.log(resuleData, 'resuleData ');
-    if (resuleData.data.StatusStr === 'success') {
-      // 识别成功
-      newMessage.value = newMessage.value + resuleData.data.ResultDetail[0].FinalSentence
+  ws.onmessage = (e) => {
+    const resultData = JSON.parse(e.data)
+    if (resultData.message = "success" && resultData.result) {
+      const { result } = resultData
+      newMessage.value = result.voice_text_str
     }
   }
 
-  mediaRecorder.start()
+  ws.onerror = (err) => {
+    console.error('[WebSocket错误]', err)
+  }
+
+  ws.onclose = () => {
+    console.log('[WebSocket] 已关闭')
+  }
+}
+// 语音识别配置
+
+let audioContext: AudioContext
+let scriptNode: ScriptProcessorNode
+
+const startRecording = async () => {
+  // 语音识别服务连接
+  const connectUrl = await getConnectUrl()
+  initWebSocket(connectUrl.data.url)
+
+  // 1. 获取麦克风音频流
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+
+  // 2. 创建 AudioContext 和 ScriptProcessorNode
+  audioContext = new (window.AudioContext || window.webkitAudioContext)({
+    sampleRate: 16000 // 腾讯云要求 16KHz
+  })
+  const source = audioContext.createMediaStreamSource(stream)
+  scriptNode = audioContext.createScriptProcessor(4096, 1, 1)
+
+  // 3. 音频处理回调
+  scriptNode.onaudioprocess = (event) => {
+    // 处理音频数据
+    const inputBuffer = event.inputBuffer.getChannelData(0) // 单通道
+    const pcmData = float32ToInt16(inputBuffer)
+
+    if (ws?.readyState === WebSocket.OPEN) {
+      ws.send(pcmData)
+    }
+  }
+
+  source.connect(scriptNode)
+  scriptNode.connect(audioContext.destination)
 }
 
+
+function stopSpeechRecognition() {
+  if (scriptNode) {
+    scriptNode.disconnect()
+  }
+
+  if (audioContext) {
+    audioContext.close()
+  }
+
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.close()
+    ws = null
+  }
+}
 const stopRecording = () => {
-  mediaRecorder?.stop()
+  // 告诉腾讯“音频发完了”
+  ws.send(JSON.stringify({ type: 'end' }));
+  // 关闭连接
+  stopSpeechRecognition()
 }
 
 const recording = ref(false);
@@ -186,14 +236,15 @@ const sendMessage = async () => {
 
   // 模拟调用接口获取回复（实际项目中请调用后端 API）
   try {
-    const reply = await searchAI({ content })
+    const {data} = await searchAI({ content })
+        
     // 删除助手的 loading 状态
     messages.value.pop()
 
     messages.value.push({
       key: messageId++,
       role: 'ai',
-      content: reply.data,
+      content: data.data,
 
       timestamp: new Date()
     })

@@ -22,3 +22,12 @@ export function voiceToText(data: FormData): AxiosPromise<string> {
     data
   });
 }
+
+// 获取连接地址
+export function getConnectUrl(): AxiosPromise<object> {
+  return request({
+    method: 'get',
+    url: `/deepSeek/asrSignature`
+  });
+}
+
