@@ -1,13 +1,13 @@
-import { createRouter, createWebHashHistory, RouteRecordRaw } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 
-const routes: Array<RouteRecordRaw> = [
+const routes = [
   {
     path: '/',
     component: () => import('@/views/layout/index.vue'),
     redirect: '/login',
     children: [
       {
-        path: '/home',
+        path: 'home',
         name: 'home',
         component: () => import('@/views/home/index.vue'),
         redirect: '/home/userlist',
@@ -40,13 +40,12 @@ const routes: Array<RouteRecordRaw> = [
         ]
       },
       {
-        path: '/setting',
+        path: 'setting',
         name: 'setting',
         component: () => import('@/views/setting/index.vue')
       },
     ]
   },
-
   {
     path: '/login',
     name: 'login',

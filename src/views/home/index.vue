@@ -30,8 +30,7 @@
 
       <el-container>
         <el-main style="padding-top: 0;">
-          <router-view @click="() => {console.log('1111');
-          }" />
+          <router-view />
         </el-main>
       </el-container>
     </el-container>

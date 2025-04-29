@@ -1,13 +1,15 @@
+<script setup lang="ts">
+</script>
+
 <template>
-  <div class="app" id="app">
+  <div class="app">
     <router-view />
   </div>
 </template>
 
-<script lang="ts" setup>
-
-</script>
-
-<style>
-@import "github-markdown-css";
+<style scoped>
+/* 样式省略 */
+.app {
+  height: 100%;
+}
 </style>

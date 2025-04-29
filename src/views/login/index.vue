@@ -1,5 +1,6 @@
 <template>
   <div class="login-container">
+
     <el-form :model="loginForm" :rules="rules" ref="loginFormRef" label-width="80px" class="login-form">
       <el-form-item label="用户名" prop="name">
         <el-input v-model="loginForm.name" placeholder="请输入用户名"></el-input>
@@ -26,11 +27,14 @@
 <script lang="ts" setup>
 import { reactive, ref } from 'vue';
 import { userLogin } from '@/apis/auth'
-import { getUserInfo } from '@/apis/user'
+
+// import { getUserInfo } from '@/apis/user'
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/app'
-import { useUserStore } from '@/store/user'; // 引入 Pinia Store
-import { User } from '@/apis/user/types';
+
+
+// import { useUserStore } from '@/store/user'; // 引入 Pinia Store
+
 const router = useRouter()
 const appStore = useAppStore();
 
