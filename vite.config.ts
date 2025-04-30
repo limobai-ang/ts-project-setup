@@ -1,6 +1,5 @@
 import { defineConfig, loadEnv } from 'vite';
 import vue from '@vitejs/plugin-vue'; // Vue 插件
-import { fileURLToPath, URL } from 'node:url'; // 处理路径
 import path from 'path'; // Node.js 路径模块
 import AutoImport from 'unplugin-auto-import/vite'
 import Components from 'unplugin-vue-components/vite'
@@ -15,22 +14,20 @@ export default defineConfig(({ mode }) => {
       vue(), // Vue 插件
       AutoImport({
         resolvers: [ElementPlusResolver()],
+        dts: 'src/auto-imports.d.ts', // ✅ 自动生成 ElMessage 类型声明
       }),
       Components({
         resolvers: [ElementPlusResolver()],
+        dts: 'src/components.d.ts', // ✅ 自动生成组件类型声明（推荐加上）
       }),
     ],
 
     // 开发服务器配置
     server: {
-      port: 3000, // 端口号
+      // port: 3000, // 端口号
+      host: true, // 👈 允许通过局域网访问（0.0.0.0）
       open: true, // 自动打开浏览器
       proxy: { // 代理配置
-        // '/api': {
-        //   target: env.VITE_API_BASE_URL || 'http://localhost:5000', // 代理目标
-        //   changeOrigin: true,
-        //   rewrite: (path) => path.replace(/^\/api/, ''),
-        // },
       },
       cors: true, // 启用 CORS
       hmr: { // 热模块替换配置
@@ -70,12 +67,9 @@ export default defineConfig(({ mode }) => {
     // CSS 配置
     css: {
       preprocessorOptions: { // 预处理器配置
-        scss: {
-          additionalData: `@import "@/styles/variables.scss";`, // 全局引入 SCSS 变量
-        },
         less: {
           modifyVars: { // 修改 Less 变量
-            'primary-color': '#1890ff',
+            // 'primary-color': '#1890ff',
           },
           javascriptEnabled: true,
         },
@@ -87,14 +81,11 @@ export default defineConfig(({ mode }) => {
 
     // 环境变量配置
     envPrefix: 'VITE_', // 环境变量前缀
-    define: { // 全局变量替换
-      __APP_VERSION__: JSON.stringify(env.npm_package_version),
-    },
 
     // 优化配置
     optimizeDeps: {
       include: ['vue', 'vue-router', 'axios'], // 预构建依赖
-      exclude: ['some-package'], // 排除依赖
+      exclude: [], // 排除依赖
     },
   };
 });

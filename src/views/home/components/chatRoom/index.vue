@@ -287,7 +287,7 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<style scoped lang="scss">
+<style scoped lang="less">
 .chat-room {
   width: 100%;
   height: 100%;

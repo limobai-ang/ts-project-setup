@@ -28,12 +28,12 @@
 import { reactive, ref } from 'vue';
 import { userLogin } from '@/apis/auth'
 
-// import { getUserInfo } from '@/apis/user'
+import { getUserInfo } from '@/apis/user'
 import { useRouter } from 'vue-router';
 import { useAppStore } from '@/store/app'
 
 
-// import { useUserStore } from '@/store/user'; // 引入 Pinia Store
+import { useUserStore } from '@/store/user'; // 引入 Pinia Store
 
 const router = useRouter()
 const appStore = useAppStore();

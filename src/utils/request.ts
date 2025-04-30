@@ -6,7 +6,7 @@ const { token, isLoggedIn } = storeToRefs(appStore);
 
 // 创建 axios 实例
 const service = axios.create({
-  baseURL: 'http://localhost:3000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL,
   timeout: 15000,
   headers: { 'Content-Type': 'application/json;charset=utf-8' }
 });
