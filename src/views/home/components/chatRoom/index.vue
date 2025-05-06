@@ -52,9 +52,8 @@
       </div>
 
       <div class="input-container">
-        <el-input v-model="newMessage" :rows="2" type="text" placeholder="Type a message" :disabled="isSending"
-          @keyup.enter="handleSendMessage" />
-        <el-button type="success" @click="handleSendMessage" :disabled="isSending">发送</el-button>
+        <!-- 输入区域 -->
+        <Sender v-model:value="newMessage" :auto-size="{ minRows: 2, maxRows: 6 }" @submit="handleSendMessage" />
       </div>
     </div>
 
@@ -68,6 +67,7 @@ import { io } from "socket.io-client";
 import { ref, nextTick, onBeforeUnmount } from 'vue';
 import { useUserStore } from '@/store/user'; // 引入 Pinia Store
 import { AckResponse } from '@/types/index'
+import { BubbleList, Sender, BubbleListProps, Prompts } from 'ant-design-x-vue';
 
 interface User {
   name: string;

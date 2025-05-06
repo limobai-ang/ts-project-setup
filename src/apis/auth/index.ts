@@ -19,3 +19,12 @@ export function addUser(data: RegisterForm ): AxiosPromise<Boolean> {
         data
     })
 }
+
+// 获取验证码
+export function sendCode(email: string): AxiosPromise<string> {
+    return request({
+        method: 'post',
+        url: `/auth/sendCode`,
+        data: { email }
+    })
+}

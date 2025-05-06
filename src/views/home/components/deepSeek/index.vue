@@ -13,7 +13,17 @@
     </div>
     <!-- 消息列表区域 -->
     <div class="messages" ref="messagesContainer">
-      <BubbleList ref="listRef" :style="{ maxHeight: '600px' }" :roles="rolesAsObject" :items="messages"
+      <!-- 提示区 -->
+      <Prompts v-if="!messages.length" title="✨ Inspirational Sparks and Marvelous Tips" :items="promptsList" wrap
+        :styles="{
+          item: {
+            flex: 'none',
+            width: 'calc(50% - 6px)',
+          },
+        }" 
+        :onItemClick="onClickPromptsItem" 
+        />
+      <BubbleList v-else ref="listRef" :style="{ maxHeight: '600px' }" :roles="rolesAsObject" :items="messages"
         :auto-scroll="true" />
     </div>
 
@@ -31,8 +41,8 @@ import { searchAI, voiceToText, getConnectUrl } from '@/apis/deepSeek/index'
 import MarkdownIt from "markdown-it";
 import hljs from "highlight.js";
 import "highlight.js/styles/github.css"; // 代码高亮主题
-import { Edit, Share } from '@element-plus/icons-vue'
-import { BubbleList, Welcome, Sender, BubbleListProps } from 'ant-design-x-vue';
+import { Edit, Share, Avatar } from '@element-plus/icons-vue'
+import { BubbleList, Welcome, Sender, BubbleListProps, Prompts } from 'ant-design-x-vue';
 import { UserOutlined } from '@ant-design/icons-vue';
 import { ElButton } from 'element-plus';
 import { float32ToInt16 } from "@/utils/index";
@@ -46,17 +56,49 @@ interface Message {
 }
 
 // 消息列表和输入消息
-const messages = ref<Message[]>([
-  {
-    key: 1,
-    role: 'ai',
-    content: '你好，我是 ChatGPT，有什么我可以帮助你的吗？'
-  }
-])
+const messages = ref<Message[]>([])
 const newMessage = ref('')
 
+// 提示列表
+const promptsList: PromptsProps['items'] = [
+  {
+    key: '1',
+    icon: h(Share, { style: { color: '#FFD700' } }),
+    label: '查看天气信息',
+    description: '今天天气怎么样?',
+  },
+  {
+    key: '2',
+    icon: h(Share, { style: { color: '#1890FF' } }),
+    label: '查看项目信息',
+    description: '查看项目个数?',
+  },
+  {
+    key: '3',
+    icon: h(Share, { style: { color: '#722ED1' } }),
+    label: 'Efficiency Boost Battle',
+    description: 'How can I work faster and better?',
+  },
+  {
+    key: '4',
+    icon: h(Share, { style: { color: '#52C41A' } }),
+    label: 'Tell me a Joke',
+    description: 'Why do not ants get sick? Because they have tiny ant-bodies!',
+  },
+  {
+    key: '5',
+    icon: h(Share, { style: { color: '#FF4D4F' } }),
+    label: 'Common Issue Solutions',
+    description: 'How to solve common issues? Share some tips!',
+  },
+];
 
-
+// 点击事件
+const onClickPromptsItem = (item: PromptsProps['items']) => {
+    // 发送消息
+    newMessage.value = item.data.description
+    sendMessage()
+}
 
 // 引用 DOM 元素，便于滚动到底部
 const messagesContainer = ref<HTMLElement | null>(null)
@@ -86,14 +128,34 @@ const md: MarkdownIt = new MarkdownIt({
 });
 
 const renderMarkdown: BubbleProps['messageRender'] = (content) => {
-  return h('div', { innerHTML: md.render(content) })
+  const messageStr = content.choices[0]?.message.content
+  return h('div', { innerHTML: md.render(messageStr) })
 }
 
+
+// 渲染多条建议消息
+const renderSuggestion: BubbleProps['messageRender'] = (content) => {
+  return h(Prompts, {
+    vertical: true,
+    title: '✨ 我找到了一些建议',
+    items: content,
+    "on-item-click": (info: { data: { label: string } }) => {
+      handleItemClick(info)
+    }
+  })
+}
+
+const renderAvatar = h(ElAvatar, {
+  src: 'https://mdn.alipayobjects.com/huamei_iwk9zp/afts/img/A*s5sNRo5LjfQAAAAAAAAAAAAADgCCAQ/fmt.webp',
+  shape: 'circle',
+  size: 40,
+  fit: 'cover',
+})
 
 const rolesAsObject: BubbleListProps['roles'] = {
   ai: {
     placement: 'start',
-    avatar: { icon: h(UserOutlined), style: { background: '#fde3cf' } },
+    avatar: renderAvatar,
     typing: { step: 5, interval: 20 },
     style: {
       maxWidth: '600px',
@@ -102,7 +164,19 @@ const rolesAsObject: BubbleListProps['roles'] = {
   },
   user: {
     placement: 'end',
-    avatar: { icon: h(UserOutlined), style: { background: '#87d068' } },
+    avatar: h(ElAvatar, { style: { background: '#87d068' }, icon: h(Avatar) }),
+  },
+  text: {
+    placement: 'start',
+    typing: { step: 5, interval: 20 },
+    avatar: renderAvatar,
+  },
+  suggestion: {
+    placement: 'start',
+    typing: { step: 5, interval: 20 },
+    avatar: renderAvatar,
+    variant: 'borderless',
+    messageRender: renderSuggestion,
   },
 };
 
@@ -236,8 +310,8 @@ const sendMessage = async () => {
 
   // 模拟调用接口获取回复（实际项目中请调用后端 API）
   try {
-    const {data} = await searchAI({ content })
-        
+    const { data } = await searchAI({ content })
+
     // 删除助手的 loading 状态
     messages.value.pop()
 

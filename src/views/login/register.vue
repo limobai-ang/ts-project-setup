@@ -8,6 +8,10 @@
             <el-form-item label="邮箱" prop="email">
                 <el-input v-model="form.email" placeholder="请输入邮箱"></el-input>
             </el-form-item>
+            <el-form-item label="验证码" prop="code">
+                <el-input v-model="form.code" placeholder="请输验证码"></el-input>
+                <el-button type="primary" @click="getCode">获取验证码</el-button>
+            </el-form-item>
 
             <el-form-item label="密码" prop="password">
                 <el-input v-model="form.password" type="password" placeholder="请输入密码" show-password></el-input>
@@ -38,7 +42,7 @@
 import { reactive, ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import type { FormInstance, FormRules } from 'element-plus'
-import { addUser } from '@/apis/auth'
+import { addUser, sendCode } from '@/apis/auth'
 import { RegisterForm } from "@/apis/auth/types";
 import { useRouter } from 'vue-router';
 
@@ -80,7 +84,20 @@ const rules: FormRules = {
         }
     ]
 }
-
+// 获取验证码
+const getCode = () => {
+    // 在此处实现获取验证码的逻辑，例如发送请求到后端
+    console.log('获取验证码', form.email);
+    
+    sendCode(form.email).then(res => {
+        ElMessage({
+            message: '验证码已发送到您的邮箱！',
+            type: 'success',
+        })
+    }).catch(err => {
+        ElMessage.error('获取验证码失败，请重试')
+    })
+}
 // 提交表单
 const onSubmit = () => {
     formRef.value?.validate((valid) => {
