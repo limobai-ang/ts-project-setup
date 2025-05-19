@@ -13,6 +13,9 @@
                 <el-menu-item index="/home/userlist">用户列表</el-menu-item>
               </el-menu-item-group>
               <el-menu-item-group>
+                <el-menu-item index="/home/userSetting">用户设置</el-menu-item>
+              </el-menu-item-group>
+              <el-menu-item-group>
                 <el-menu-item index="/home/adduser">个人信息</el-menu-item>
               </el-menu-item-group>
               <el-menu-item-group>

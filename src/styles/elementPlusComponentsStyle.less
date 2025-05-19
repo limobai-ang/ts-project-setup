@@ -1,0 +1,75 @@
+// checkbox 和 radio 公共样式（mixin模拟）
+.checkBox-style-one() {
+  .el-checkbox__label,
+  .el-radio__label {
+  }
+
+  &.is-checked {
+    .el-checkbox__label {
+    }
+
+    .el-radio__label {
+    }
+  }
+}
+
+// 复用样式到 checkbox
+.el-checkbox {
+  &.checkBox-style-one {
+    .checkBox-style-one();
+  }
+
+  &.checkBox-style-tow {
+    width: 100%;
+
+    .el-checkbox__label {
+      width: 100%;
+    }
+  }
+}
+
+// 复用样式到 radio
+.el-radio {
+  &.radio-style-one {
+    .checkBox-style-one();
+  }
+
+  &.radio-style-tow {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    .el-radio__label {
+      width: 100%;
+    }
+  }
+}
+
+// 多选组样式封装
+.checkbox-style-noe() {
+  .el-checkbox,
+  .el-radio {
+    .checkBox-style-one();
+  }
+}
+
+.el-checkbox-group {
+  &.checkbox-style-noe {
+    .checkbox-style-noe();
+  }
+}
+
+
+.el-card {
+  &.card-style-one {
+
+    .el-card__header {
+      height: 54px;
+    }
+
+    .el-card__body {
+      height: calc(100% - 54px);
+    }
+  }
+}
