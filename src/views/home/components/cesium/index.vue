@@ -15,7 +15,11 @@ declare global {
 
 window.CESIUM_BASE_URL = '/';
 
-import { Cartesian3, createOsmBuildingsAsync, Ion, Math as CesiumMath, Terrain, Viewer, ProviderViewModel, UrlTemplateImageryProvider } from 'cesium';
+import {
+  Cartesian3, createOsmBuildingsAsync, Ion, Math as CesiumMath,
+  Terrain, Viewer, ProviderViewModel, UrlTemplateImageryProvider,
+  Color, HeightReference
+} from 'cesium';
 import "cesium/Build/Cesium/Widgets/widgets.css";
 import { onMounted } from 'vue';
 
@@ -46,51 +50,122 @@ const gaodeVector = new ProviderViewModel({
 // 初始化cesium
 const initCesium = async () => {
   // Initialize the Cesium Viewer in the HTML element with the `cesiumContainer` ID.
-const viewer = new Viewer('cesiumContainer', {
-  imageryProviderViewModels: [gaodeSatellite, gaodeVector], // 添加高德地图选项
-  selectedImageryProviderViewModel: gaodeVector, // 默认显示矢量地图
-  baseLayerPicker: true, // 启用底图选择器
-  infoBox: false, // 是否显示信息框
-  selectionIndicator: false, // 是否显示选中指示器
-  sceneModePicker: false, // 是否显示场景模式选择器
-  navigationHelpButton: false, // 是否显示导航帮助按钮
-  geocoder: false, // 是否显示地理编码器
-  homeButton: false, // 是否显示主页按钮
-  animation: false, // 是否显示动画控件
-  timeline: false, // 是否显示时间轴
-  
-  terrain: Terrain.fromWorldTerrain(), // 使用全球地形
+  const viewer = new Viewer('cesiumContainer', {
+    // imageryProviderViewModels: [gaodeSatellite, gaodeVector], // 添加高德地图选项
+    // selectedImageryProviderViewModel: gaodeVector, // 默认显示矢量地图
+    baseLayerPicker: false, // 启用底图选择器
+    infoBox: false, // 是否显示信息框
+    selectionIndicator: false, // 是否显示选中指示器
+    sceneModePicker: false, // 是否显示场景模式选择器
+    navigationHelpButton: false, // 是否显示导航帮助按钮
+    geocoder: false, // 是否显示地理编码器
+    homeButton: false, // 是否显示主页按钮
+    animation: false, // 是否显示动画控件
+    timeline: false, // 是否显示时间轴
+
+    terrain: Terrain.fromWorldTerrain(), // 使用全球地形
 
 
-}); 
+  });
 
-// 去掉图标
-(viewer.cesiumWidget.creditContainer as HTMLElement).style.display = 'none';
+  // 去掉图标
+  (viewer.cesiumWidget.creditContainer as HTMLElement).style.display = 'none';
 
 
-// 用于让相机平滑地飞到指定的位置和角度
-viewer.camera.flyTo({
-  // 设置相机要飞往的地理坐标点（经度、纬度、高度）。
-  destination: Cartesian3.fromDegrees(115.05, 31.22, 10000000),
-  // 控制相机的方向，包括 航向（heading）、俯仰角（pitch）、翻滚角（roll）。
-  orientation: {
-    heading: CesiumMath.toRadians(0.0),
-    pitch: CesiumMath.toRadians(-90.0),
+  // 用于让相机平滑地飞到指定的位置和角度
+  viewer.camera.flyTo({
+    // 设置相机要飞往的地理坐标点（经度、纬度、高度）。
+    destination: Cartesian3.fromDegrees(116.397697, 39.906036, 1000),   // Cartesian3.fromDegrees 返回的是笛卡尔坐标系下的坐标
+    // 控制相机的方向，包括 航向（heading）、俯仰角（pitch）、翻滚角（roll）。
+    orientation: {
+      heading: CesiumMath.toRadians(0.0),
+      pitch: CesiumMath.toRadians(-90.0),
+      roll: CesiumMath.toRadians(0.0)
 
-  }
-});
+    }
+  });
 
-// Add Cesium OSM Buildings, a global 3D buildings layer.
-const buildingTileset = await createOsmBuildingsAsync();
-viewer.scene.primitives.add(buildingTileset);   
+  // Add Cesium OSM Buildings, a global 3D buildings layer.
+  const buildingTileset = await createOsmBuildingsAsync();   // 设置3d地形，建筑物模型
+  viewer.scene.primitives.add(buildingTileset);
+
+  // 添加键盘事件
+  handleKey(viewer)
+
+  // 创建点
+  addEntities(viewer)
+
+  // 添加物体 
+  addEntities(viewer)
 };
 
+// 监听键盘事件方法
+const handleKey = (viewer: Viewer) => {
+  // 设置键盘控制
+  document.addEventListener('keydown', (event) => {
+    switch (event.key) {
+      case 'ArrowUp':
+        viewer.camera.moveForward(100);
+        break;
+      case 'ArrowDown':
+        viewer.camera.moveBackward(100);
+        break;
+      case 'ArrowLeft':
+        viewer.camera.moveLeft(100);
+        break;
+      case 'ArrowRight':
+        viewer.camera.moveRight(100);
+        break;
+      case 'w':
+        viewer.camera.lookUp(CesiumMath.toRadians(1));
+        break;
+      case 's':
+        viewer.camera.lookDown(CesiumMath.toRadians(1));
+        break;
+      case 'a':
+        viewer.camera.lookLeft(CesiumMath.toRadians(1));
+        break;
+      case 'd':
+        viewer.camera.lookRight(CesiumMath.toRadians(1));
+        break;
+    }
+  });
+};
+
+
+// 添加物体 
+const addEntities = (viewer: Viewer) => {
+
+  // 添加一个点
+  // const point = viewer.entities.add({
+  //   position: Cartesian3.fromDegrees(116.390697, 39.907036, 0),
+  //   point: {
+  //     pixelSize: 10,
+  //     color: Color.RED,
+  //     outlineColor: Color.WHITE,
+  //     outlineWidth: 2
+  //   }
+  // });
+
+  // 添加一个3d模型
+  const model = viewer.entities.add({
+    position: Cartesian3.fromDegrees(116.390697, 39.907036, 0),
+    model: {
+      uri: '/model/car_scene.glb',
+      scale: 0.05, // 缩小模型为原来的 0.5 倍
+      minimumPixelSize: 128, // 最小像素大小
+      maximumScale: 20000, // 最大缩放比例
+      heightReference: HeightReference.CLAMP_TO_GROUND, // 将模型固定在地面
+    },
+  });
+}
+
+
+
 // 元素渲染完成后执行
-onMounted (() => {
+onMounted(() => {
   initCesium();
 });
 </script>
 
-<style scoped>
-
-</style>
+<style scoped></style>
