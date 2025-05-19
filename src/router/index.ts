@@ -41,6 +41,11 @@ const routes = [
             path: '/home/cesium',
             name: 'cesium',
             component: () => import('@/views/home/components/cesium/index.vue'),
+          },
+          {
+            path: '/home/AMap',
+            name: 'cesium',
+            component: () => import('@/views/home/components/AMap/index.vue'),
           }
         ]
       },
