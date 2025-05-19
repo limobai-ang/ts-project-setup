@@ -18,6 +18,11 @@ const routes = [
             component: () => import('@/views/home/components/user/userList.vue'),
           },
           {
+            path: '/home/userSetting',
+            name: 'userSetting',
+            component: () => import('@/views/home/components/user/userSetting.vue'),
+          },
+          {
             path: '/home/adduser',
             name: 'addUser',
             component: () => import('@/views/home/components/user/addUser.vue'),
