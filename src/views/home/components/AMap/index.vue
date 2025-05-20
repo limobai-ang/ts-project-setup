@@ -32,7 +32,7 @@ const createAMap = async () => {
 const initAMap = () => {
     const markerList = getMockMarkerList(10000);
 
-    const { start, clear, update } = useBatchMarker(map, {
+    const { start, clear, update, getMarkers } = useBatchMarker(map, {
         data: markerList,
         getPosition: item => [item.lng, item.lat],
         getContent: item => `<div class="marker marker-${item.type}">${item.label}</div>`,
@@ -43,10 +43,26 @@ const initAMap = () => {
             click: item => {
                 console.log(item)
             }
+        },
+        enableCluster: true,
+        clusterZoomFactor: 0.1,
+        getClusterContent(items) {
+            console.log(items, 'items');
+            
+            return `<div class="marker">ID</div>`
+        },
+        onCompleted() {
+            console.log('点位渲染完成onCompleted');
         }
     });
 
     start();
+
+    map.on('moveend', () => {
+        const markers = getMarkers()
+        console.log(markers, 'markers');
+
+    });
 }
 
 
@@ -58,9 +74,53 @@ onUnmounted(() => {
 });
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 #container {
     width: 100%;
     height: 800px;
+}
+</style>
+
+<style>
+.marker {
+    width: 30px;
+    height: 30px;
+    background-color: gray;
+    /* 默认颜色，类型覆盖 */
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 30px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+/* 内容字体正向显示 */
+.marker::after {
+    content: attr(data-id);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: rotate(45deg) translate(-50%, -50%);
+    color: #fff;
+}
+
+/* 类型样式 */
+.marker-type1 {
+    background-color: #409EFF;
+    /* 蓝色 */
+}
+
+.marker-type2 {
+    background-color: #67C23A;
+    /* 绿色 */
+}
+
+.marker-type3 {
+    background-color: #E6A23C;
+    /* 橙色 */
 }
 </style>

@@ -1,6 +1,12 @@
 // utils/useBatchMarker.ts
 
 interface BatchMarkerOptions<T> {
+    // 聚合配置
+    enableCluster?: boolean; // 是否启用聚合展示
+    getClusterContent?: (items: T[]) => string; // 聚合点展示的内容方法
+    clusterZoomFactor?: number; // 根据缩放级别控制聚合力度（0-1）
+    slice?: boolean; // 是否启用切片渲染策略，默认 true
+    onCompleted?: () => void; // 切片渲染完成后的回调
     events?: Partial<Record<string, (item: T, marker: AMap.Marker) => void>>;
     data: T[];
     getPosition: (item: T) => [number, number];
@@ -14,6 +20,7 @@ interface BatchMarkerOptions<T> {
 }
 
 interface BatchMarkerController<T = any> {
+    getMarkers: () => AMap.Marker[];
     start: () => void;
     clear: () => void;
     update: (itemOrItems: T | T[]) => void;
@@ -24,12 +31,89 @@ export function isInBounds(map: AMap.Map, lnglat: [number, number]): boolean {
     return bounds.contains(new AMap.LngLat(lnglat[0], lnglat[1]));
 }
 
-export function setMarkerEvents(marker: AMap.Marker, item: any, events: Partial<Record<string, (item: any, marker: AMap.Marker) => void>>): void {
-    Object.entries(events).forEach(([event, handler]) => {
-        if (handler) marker.on(event, () => handler(item, marker));
+function runBatches<T>(items: T[], batchSize: number, interval: number, isCancelled: () => boolean, callback: (batch: T[]) => void, onComplete?: () => void) {
+    const total = Math.ceil(items.length / batchSize);
+    let currentBatch = 0;
+
+    const process = () => {
+        if (isCancelled() || currentBatch >= total) {
+            if (onComplete) onComplete();
+            return;
+        }
+
+        const start = currentBatch * batchSize;
+        const end = Math.min(start + batchSize, items.length);
+        const batch = items.slice(start, end);
+
+        callback(batch);
+
+        currentBatch++;
+        if (currentBatch < total) {
+            setTimeout(process, interval);
+        }
+    };
+
+    process();
+}
+
+function getClusteredData<T>(
+    items: T[],
+    zoom: number,
+    zoomFactor: number,
+    getPosition: (item: T) => [number, number],
+    getId: (item: T) => number | string
+): Array<{
+    id: string;
+    children: T[];
+    position: [number, number];
+}> {
+    const clusterDistance = 100 * (1 - zoomFactor) * (18 - zoom + 1);
+    const clusters: { items: T[]; center: [number, number] }[] = [];
+
+    items.forEach(item => {
+        const pos = getPosition(item);
+        let cluster = clusters.find(c => {
+            const [lng, lat] = c.center;
+            const dx = lng - pos[0];
+            const dy = lat - pos[1];
+            return Math.sqrt(dx * dx + dy * dy) * 11000 < clusterDistance;
+        });
+
+        if (cluster) {
+            cluster.items.push(item);
+            const total = cluster.items.length;
+            const newLng = (cluster.center[0] * (total - 1) + pos[0]) / total;
+            const newLat = (cluster.center[1] * (total - 1) + pos[1]) / total;
+            cluster.center = [newLng, newLat];
+        } else {
+            clusters.push({ items: [item], center: pos });
+        }
+    });
+
+    return clusters.map(cluster => {
+        const id = cluster.items.map(getId).join('_');
+        return {
+            id,
+            children: cluster.items,
+            position: cluster.center
+        };
     });
 }
 
+
+function getClusterCenter<T>(items: T[], getPosition: (item: T) => [number, number]): [number, number] {
+    const total = items.length;
+    const sum = items.reduce(
+        (acc, item) => {
+            const [lng, lat] = getPosition(item);
+            acc[0] += lng;
+            acc[1] += lat;
+            return acc;
+        },
+        [0, 0]
+    );
+    return [sum[0] / total, sum[1] / total];
+}
 export function useBatchMarker<T extends Record<string, any>>(
     map: AMap.Map,
     options: BatchMarkerOptions<T>
@@ -44,6 +128,8 @@ export function useBatchMarker<T extends Record<string, any>>(
         smartDiffRender = true,
         getId = (item: T) => item.id,
         compareContent = (oldContent, newContent) => oldContent === newContent,
+        clusterZoomFactor = 0.5,
+        enableCluster = false
     } = options;
 
     const markerMap = new Map<number | string, AMap.Marker>();
@@ -71,16 +157,11 @@ export function useBatchMarker<T extends Record<string, any>>(
         });
     };
 
-    const renderVisible = (): void => {
-        if (!optimizeByBounds) return;
-
-        const visibleIds = new Set<number | string>();
-
-        data.forEach(item => {
+    const processItems = (items: T[]): void => {
+        items.forEach(item => {
             const pos = getPosition(item);
-            const id = getId(item);
             if (!optimizeByBounds || isInBounds(map, pos)) {
-                visibleIds.add(id);
+                const id = getId(item);
                 const newContent = getContent(item);
                 const existing = markerMap.get(id);
 
@@ -91,11 +172,9 @@ export function useBatchMarker<T extends Record<string, any>>(
                         offset: new AMap.Pixel(-10, -10),
                     });
                     if (options.events) {
-                        setMarkerEvents(
-                            marker,
-                            item,
-                            options.events
-                        );
+                        Object.entries(options.events).forEach(([event, handler]) => {
+                            if (handler) marker.on(event, () => handler(item, marker));
+                        });
                     }
                     marker.setMap(map);
                     markerMap.set(id, marker);
@@ -111,6 +190,35 @@ export function useBatchMarker<T extends Record<string, any>>(
                 }
             }
         });
+    };
+
+    const renderVisible = (): void => {
+        if (!optimizeByBounds) return;
+
+        const visibleIds = new Set<number | string>();
+
+        const visibleItems = data.filter(item => {
+            const pos = getPosition(item);
+            const id = getId(item);
+            if (!optimizeByBounds || isInBounds(map, pos)) {
+                visibleIds.add(id);
+                return true;
+            }
+            return false;
+        });
+
+        const sourceItems = (enableCluster && options.getClusterContent)
+            ? getClusteredData(visibleItems, map.getZoom(), clusterZoomFactor, getPosition, getId)
+            : visibleItems;
+
+        console.log(sourceItems, 'DsourceItems');
+
+        if (options.slice !== false) {
+            runBatches(visibleItems, batchSize, interval, () => isCancelled, processItems, options.onCompleted);
+        } else {
+            processItems(visibleItems);
+            if (options.onCompleted) options.onCompleted();
+        }
 
         if (smartDiffRender) {
             for (const [id, marker] of markerMap.entries()) {
@@ -119,77 +227,16 @@ export function useBatchMarker<T extends Record<string, any>>(
                     markerMap.delete(id);
                 }
             }
-        } else {
-            clear();
-            data.forEach(item => {
-                const pos = getPosition(item);
-                if (!optimizeByBounds || isInBounds(map, pos)) {
-                    const id = getId(item);
-                    const marker = new AMap.Marker({
-                        position: pos,
-                        content: getContent(item),
-                        offset: new AMap.Pixel(-10, -10),
-                    });
-                    marker.setMap(map);
-                    markerMap.set(id, marker);
-                }
-            });
         }
     };
 
     const addBatch = (): void => {
-        const total = Math.ceil(data.length / batchSize);
-        let currentBatch = 0;
-
-        const process = () => {
-            if (isCancelled || currentBatch >= total) return;
-
-            const start = currentBatch * batchSize;
-            const end = Math.min(start + batchSize, data.length);
-            const batch = data.slice(start, end);
-
-            batch.forEach(item => {
-                const pos = getPosition(item);
-                if (!optimizeByBounds || isInBounds(map, pos)) {
-                    const id = getId(item);
-                    const newContent = getContent(item);
-
-                    const existing = markerMap.get(id);
-                    if (!existing) {
-                        const marker = new AMap.Marker({
-                            position: pos,
-                            content: newContent,
-                            offset: new AMap.Pixel(-10, -10),
-                        });
-                        if (options.events) {
-                            setMarkerEvents(
-                                marker,
-                                item,
-                                options.events
-                            );
-                        }
-                        marker.setMap(map);
-                        markerMap.set(id, marker);
-                    } else {
-                        const currentContent = existing.getContent() as string;
-                        if (!compareContent(currentContent, newContent)) {
-                            existing.setContent(newContent);
-                        }
-                        const oldPos = existing.getPosition();
-                        if (oldPos?.getLng() !== pos[0] || oldPos?.getLat() !== pos[1]) {
-                            existing.setPosition(pos);
-                        }
-                    }
-                }
-            });
-
-            currentBatch++;
-            if (currentBatch < total) {
-                setTimeout(process, interval);
-            }
-        };
-
-        process();
+        if (options.slice !== false) {
+            runBatches(data, batchSize, interval, () => isCancelled, processItems, options.onCompleted);
+        } else {
+            processItems(data);
+            if (options.onCompleted) options.onCompleted();
+        }
     };
 
     const start = (): void => {
@@ -200,7 +247,6 @@ export function useBatchMarker<T extends Record<string, any>>(
             map.on('moveend', renderVisible);
         }
     };
-
 
     const clear = (): void => {
         isCancelled = true;
@@ -214,5 +260,5 @@ export function useBatchMarker<T extends Record<string, any>>(
         }
     };
 
-    return { start, clear, update };
+    return { start, clear, update, getMarkers: () => Array.from(markerMap.values()) };
 }
