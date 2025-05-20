@@ -28,16 +28,22 @@ const createAMap = async () => {
     initAMap();
 }
 
+
 const initAMap = () => {
     const markerList = getMockMarkerList(10000);
 
-    const { start, clear } = useBatchMarker(map, {
+    const { start, clear, update } = useBatchMarker(map, {
         data: markerList,
         getPosition: item => [item.lng, item.lat],
         getContent: item => `<div class="marker marker-${item.type}">${item.label}</div>`,
         batchSize: 500,
         interval: 100,
-        optimizeByBounds: true
+        optimizeByBounds: true,
+        events: {
+            click: item => {
+                console.log(item)
+            }
+        }
     });
 
     start();
