@@ -1,25 +1,25 @@
 // utils/useBatchMarker.ts
+import { ClusterItem, clusterPoints } from './clusterPoints';
 
-interface BatchMarkerOptions<T> {
-    // 聚合配置
-    enableCluster?: boolean; // 是否启用聚合展示
-    getClusterContent?: (items: T[]) => string; // 聚合点展示的内容方法
-    clusterZoomFactor?: number; // 根据缩放级别控制聚合力度（0-1）
-    slice?: boolean; // 是否启用切片渲染策略，默认 true
-    onCompleted?: () => void; // 切片渲染完成后的回调
-    events?: Partial<Record<string, (item: T, marker: AMap.Marker) => void>>;
+export interface BatchMarkerOptions<T> {
+    enableCluster?: boolean;
+    renderClusterMarker?: (items: T[]) => string;
+    clusterZoomFactor?: number;
+    slice?: boolean;
+    onCompleted?: () => void;
+    events?: Partial<Record<string, (item: T | ClusterItem<T>, marker: AMap.Marker) => void>>;
     data: T[];
     getPosition: (item: T) => [number, number];
-    getContent: (item: T) => string;
+    renderMarker: (item: T) => string;
     batchSize?: number;
     interval?: number;
     optimizeByBounds?: boolean;
-    smartDiffRender?: boolean; // 是否启用差异更新渲染，默认 true
-    getId?: (item: T) => number | string; // 默认使用 item.id
-    compareContent?: (oldContent: string, newContent: string) => boolean; // 可选：内容是否变化判断函数
+    smartDiffRender?: boolean;
+    getId?: (item: T) => number | string;
+    compareContent?: (oldContent: string, newContent: string) => boolean;
 }
 
-interface BatchMarkerController<T = any> {
+export interface BatchMarkerController<T = any> {
     getMarkers: () => AMap.Marker[];
     start: () => void;
     clear: () => void;
@@ -29,6 +29,14 @@ interface BatchMarkerController<T = any> {
 export function isInBounds(map: AMap.Map, lnglat: [number, number]): boolean {
     const bounds = map.getBounds();
     return bounds.contains(new AMap.LngLat(lnglat[0], lnglat[1]));
+}
+
+export function projectToPixelFactory(map: AMap.Map) {
+    return (lnglat: [number, number]) => {
+        const lngLatObj = new AMap.LngLat(lnglat[0], lnglat[1]);
+        const pixel = map.lngLatToContainer(lngLatObj);
+        return { x: pixel.getX(), y: pixel.getY() };
+    };
 }
 
 function runBatches<T>(items: T[], batchSize: number, interval: number, isCancelled: () => boolean, callback: (batch: T[]) => void, onComplete?: () => void) {
@@ -56,64 +64,6 @@ function runBatches<T>(items: T[], batchSize: number, interval: number, isCancel
     process();
 }
 
-function getClusteredData<T>(
-    items: T[],
-    zoom: number,
-    zoomFactor: number,
-    getPosition: (item: T) => [number, number],
-    getId: (item: T) => number | string
-): Array<{
-    id: string;
-    children: T[];
-    position: [number, number];
-}> {
-    const clusterDistance = 100 * (1 - zoomFactor) * (18 - zoom + 1);
-    const clusters: { items: T[]; center: [number, number] }[] = [];
-
-    items.forEach(item => {
-        const pos = getPosition(item);
-        let cluster = clusters.find(c => {
-            const [lng, lat] = c.center;
-            const dx = lng - pos[0];
-            const dy = lat - pos[1];
-            return Math.sqrt(dx * dx + dy * dy) * 11000 < clusterDistance;
-        });
-
-        if (cluster) {
-            cluster.items.push(item);
-            const total = cluster.items.length;
-            const newLng = (cluster.center[0] * (total - 1) + pos[0]) / total;
-            const newLat = (cluster.center[1] * (total - 1) + pos[1]) / total;
-            cluster.center = [newLng, newLat];
-        } else {
-            clusters.push({ items: [item], center: pos });
-        }
-    });
-
-    return clusters.map(cluster => {
-        const id = cluster.items.map(getId).join('_');
-        return {
-            id,
-            children: cluster.items,
-            position: cluster.center
-        };
-    });
-}
-
-
-function getClusterCenter<T>(items: T[], getPosition: (item: T) => [number, number]): [number, number] {
-    const total = items.length;
-    const sum = items.reduce(
-        (acc, item) => {
-            const [lng, lat] = getPosition(item);
-            acc[0] += lng;
-            acc[1] += lat;
-            return acc;
-        },
-        [0, 0]
-    );
-    return [sum[0] / total, sum[1] / total];
-}
 export function useBatchMarker<T extends Record<string, any>>(
     map: AMap.Map,
     options: BatchMarkerOptions<T>
@@ -121,27 +71,27 @@ export function useBatchMarker<T extends Record<string, any>>(
     const {
         data,
         getPosition,
-        getContent,
-        batchSize = 500,
+        renderMarker,
+        batchSize = 50,
         interval = 100,
         optimizeByBounds = false,
         smartDiffRender = true,
         getId = (item: T) => item.id,
         compareContent = (oldContent, newContent) => oldContent === newContent,
-        clusterZoomFactor = 0.5,
-        enableCluster = false
+        enableCluster = false,
+        renderClusterMarker = (items) => `<div class="marker">ID</div>`
     } = options;
 
-    const markerMap = new Map<number | string, AMap.Marker>();
+    const markerMap = new Map<string, AMap.Marker>();
     let isCancelled = false;
 
     const update = (itemOrItems: T | T[]): void => {
         const items = Array.isArray(itemOrItems) ? itemOrItems : [itemOrItems];
 
         items.forEach(item => {
-            const id = getId(item);
+            const id = String(getId(item));
             const pos = getPosition(item);
-            const content = getContent(item);
+            const content = renderMarker(item);
             const existing = markerMap.get(id);
 
             if (existing) {
@@ -161,8 +111,8 @@ export function useBatchMarker<T extends Record<string, any>>(
         items.forEach(item => {
             const pos = getPosition(item);
             if (!optimizeByBounds || isInBounds(map, pos)) {
-                const id = getId(item);
-                const newContent = getContent(item);
+                const id = String(getId(item));
+                const newContent = renderMarker(item);
                 const existing = markerMap.get(id);
 
                 if (!existing) {
@@ -195,29 +145,54 @@ export function useBatchMarker<T extends Record<string, any>>(
     const renderVisible = (): void => {
         if (!optimizeByBounds) return;
 
-        const visibleIds = new Set<number | string>();
-
+        const visibleIds = new Set<string>();
+        const projectToPixel = projectToPixelFactory(map);
         const visibleItems = data.filter(item => {
             const pos = getPosition(item);
-            const id = getId(item);
-            if (!optimizeByBounds || isInBounds(map, pos)) {
-                visibleIds.add(id);
+            const id = String(getId(item));
+            if (isInBounds(map, pos)) {
+                if (!enableCluster) visibleIds.add(id);
                 return true;
             }
             return false;
         });
 
-        const sourceItems = (enableCluster && options.getClusterContent)
-            ? getClusteredData(visibleItems, map.getZoom(), clusterZoomFactor, getPosition, getId)
-            : visibleItems;
+        const clusteredList: ClusterItem<T>[] = clusterPoints(
+            visibleItems,
+            getPosition,
+            60,
+            projectToPixel
+        );
 
-        console.log(sourceItems, 'DsourceItems');
+        function renderClusterItems(clusters: ClusterItem<T>[]): void {
+            clusters.forEach(cluster => {
+                const id = cluster.id;
+                const marker = new AMap.Marker({
+                    position: cluster.options.center,
+                    content: cluster.type === 'cluster'
+                        ? renderClusterMarker(cluster.children)
+                        : renderMarker(cluster.children[0]),
+                    offset: new AMap.Pixel(-10, -10),
+                });
 
-        if (options.slice !== false) {
-            runBatches(visibleItems, batchSize, interval, () => isCancelled, processItems, options.onCompleted);
+                if (options.events) {
+                    Object.entries(options.events).forEach(([event, handler]) => {
+                        if (handler) marker.on(event, () => handler(cluster as any, marker));
+                    });
+                }
+                visibleIds.add(cluster.id)
+                marker.setMap(map);
+                markerMap.set(id, marker);
+            });
+        }
+        if (enableCluster) {
+            // 清空并删除
+            markerMap.forEach((marker) => marker.setMap(null));
+            markerMap.clear();
+            renderClusterItems(clusteredList);
         } else {
-            processItems(visibleItems);
-            if (options.onCompleted) options.onCompleted();
+            const size = options.slice ? batchSize : visibleItems.length;
+            runBatches(visibleItems, size, interval, () => isCancelled, processItems, options.onCompleted);
         }
 
         if (smartDiffRender) {
@@ -230,21 +205,11 @@ export function useBatchMarker<T extends Record<string, any>>(
         }
     };
 
-    const addBatch = (): void => {
-        if (options.slice !== false) {
-            runBatches(data, batchSize, interval, () => isCancelled, processItems, options.onCompleted);
-        } else {
-            processItems(data);
-            if (options.onCompleted) options.onCompleted();
-        }
-    };
-
     const start = (): void => {
         isCancelled = false;
-        addBatch();
         if (optimizeByBounds) {
             map.on('zoomend', renderVisible);
-            map.on('moveend', renderVisible);
+            // map.on('moveend', renderVisible);
         }
     };
 

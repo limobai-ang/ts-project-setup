@@ -35,8 +35,8 @@ const initAMap = () => {
     const { start, clear, update, getMarkers } = useBatchMarker(map, {
         data: markerList,
         getPosition: item => [item.lng, item.lat],
-        getContent: item => `<div class="marker marker-${item.type}">${item.label}</div>`,
-        batchSize: 500,
+        renderMarker: item => `<div class="marker marker-${item.type}">${item.label}</div>`,
+        batchSize: 50,
         interval: 100,
         optimizeByBounds: true,
         events: {
@@ -46,10 +46,8 @@ const initAMap = () => {
         },
         enableCluster: true,
         clusterZoomFactor: 0.1,
-        getClusterContent(items) {
-            console.log(items, 'items');
-            
-            return `<div class="marker">ID</div>`
+        renderClusterMarker(items) {
+            return `<div class="cluster">ID</div>`
         },
         onCompleted() {
             console.log('点位渲染完成onCompleted');
@@ -60,8 +58,6 @@ const initAMap = () => {
 
     map.on('moveend', () => {
         const markers = getMarkers()
-        console.log(markers, 'markers');
-
     });
 }
 
@@ -86,6 +82,22 @@ onUnmounted(() => {
     width: 30px;
     height: 30px;
     background-color: gray;
+    /* 默认颜色，类型覆盖 */
+    color: #fff;
+    font-size: 14px;
+    font-weight: bold;
+    text-align: center;
+    line-height: 30px;
+    border-radius: 50% 50% 50% 0;
+    transform: rotate(-45deg);
+    position: relative;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+
+.cluster {
+    width: 30px;
+    height: 30px;
+    background-color: rgb(255, 0, 0);
     /* 默认颜色，类型覆盖 */
     color: #fff;
     font-size: 14px;
