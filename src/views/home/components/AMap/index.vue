@@ -5,7 +5,7 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted } from "vue";
 import AMapLoader from "@amap/amap-jsapi-loader";
-import { useBatchMarker } from '@/utils/useBatchMarker';
+import { useBatchMarker } from 'use-batch-marker'
 import { getMockMarkerList } from '@/views/home/components/AMap/mockMarkerList';
 let map: AMap.Map
 const createAMap = async () => {
@@ -20,7 +20,7 @@ const createAMap = async () => {
     map = new AMap.Map("container", {
         // 设置地图容器id
         viewMode: "3D", // 是否为3D地图模式
-        zoom: 15, // 初始化地图级别
+        zoom: 13, // 初始化地图级别
         center: [116.397428, 39.90923], // 初始化地图中心点位置
     });
 
