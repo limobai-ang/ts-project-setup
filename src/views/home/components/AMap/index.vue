@@ -9,7 +9,6 @@ import { useBatchMarker } from 'use-batch-marker'
 import { getMockMarkerList } from '@/views/home/components/AMap/mockMarkerList';
 import { createApp, h } from 'vue';
 import ClusterMarker from './ClusterMarker.vue';
-import { renderToString } from '@vue/server-renderer'
 let map: AMap.Map
 const createAMap = async () => {
   (window as any)._AMapSecurityConfig = {
@@ -39,24 +38,32 @@ const initAMap = () => {
     data: markerList,
     getPosition: item => [item.lng, item.lat],
     renderMarker: item => `<div class="marker marker-${item.type}">${item.label}</div>`,
+
+    // 开启分批渲染
+    sliceRender: true,
     batchSize: 50,
     interval: 100,
+
+    // 开启边缘优化
     optimizeByBounds: true,
+    // 注册点位事件
     events: {
       click: item => {
         console.log(item)
       }
     },
+    // 开启聚合
     enableCluster: true,
-    clusterZoomFactor: 0.1,
-    async renderClusterMarker (items) {
+    renderClusterMarker(items) {
       const container = document.createElement('div');
       const app = createApp({
         render: () => h(ClusterMarker, { items })
       });
       app.mount(container);
-      return await renderToString(app) // 返回纯 HTML 字符串，可用于 marker
+      return container
     },
+
+    // 点位渲染完成时的回调
     onCompleted() {
       console.log('点位渲染完成onCompleted');
     }

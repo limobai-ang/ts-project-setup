@@ -8,7 +8,7 @@ interface MockMarker {
 }
 
 export function getMockMarkerList(count: number = 10000): MockMarker[] {
-  const typeList = Array.from({ length: 10 }, (_, i) => `type-${i + 1}`);
+  const typeList = Array.from({ length: 10 }, (_, i) => `type${i + 1}`);
   const result: MockMarker[] = [];
 
   // 北京经纬度范围（大致）
