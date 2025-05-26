@@ -175,27 +175,26 @@ const sendEmailCode = async () => {
   }
 };
 
-const handleRegister = async () => {
+const handleRegister = () => {
   if (!formRef.value) return;
+  formRef.value.validate(async (valid, fields) => {
+    if (!valid) return
+    try {
+      isSubmitting.value = true;
+      // 在此处执行注册逻辑，例如发送数据到后端
+      await addUser(form)
+      ElMessage.success('用户注册成功！');
 
-  try {
-    await formRef.value.validate();
-    isSubmitting.value = true;
+      // 重置表单
+      formRef.value.resetFields();
+      toLogin()
+    } catch (error) {
+      ElMessage.error(error);
+    } finally {
+      isSubmitting.value = false;
+    }
+  })
 
-    // 在此处执行注册逻辑，例如发送数据到后端
-    await addUser(form)
-    ElMessage.success('注册成功！');
-
-    // 重置表单
-    formRef.value.resetFields();
-    toLogin()
-
-
-  } catch (error) {
-    ElMessage.error('请检查表单填写是否正确');
-  } finally {
-    isSubmitting.value = false;
-  }
 };
 
 // 返回登陆页面
