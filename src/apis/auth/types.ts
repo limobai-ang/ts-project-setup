@@ -11,7 +11,7 @@ export interface LoginResponse {
 }
 
 export interface RegisterForm {
-    name: string;
+    username: string;
     email: string;
     password: string;
     confirmPassword: string;

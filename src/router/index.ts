@@ -4,49 +4,49 @@ const routes = [
   {
     path: '/',
     component: () => import('@/views/layout/index.vue'),
-    redirect: '/home/AMap',
+    redirect: '/login',
     children: [
       {
         path: 'home',
         name: 'home',
         component: () => import('@/views/home/index.vue'),
-        redirect: '/home/userlist',
+        redirect: 'home/userlist',
         children: [
           {
-            path: '/home/userlist',
+            path: 'userlist',
             name: 'userList',
             component: () => import('@/views/home/components/user/userList.vue'),
           },
           {
-            path: '/home/userSetting',
+            path: 'userSetting',
             name: 'userSetting',
             component: () => import('@/views/home/components/user/userSetting.vue'),
           },
           {
-            path: '/home/adduser',
+            path: 'addUser',
             name: 'addUser',
             component: () => import('@/views/home/components/user/addUser.vue'),
           },
           {
-            path: '/home/chatRoom',
+            path: 'chatRoom',
             name: 'chatRoom',
             component: () => import('@/views/home/components/chatRoom/index.vue'),
           },
           {
-            path: '/home/deepSeek',
+            path: 'deepSeek',
             name: 'deepSeek',
             component: () => import('@/views/home/components/deepSeek/index.vue'),
           },
           {
-            path: '/home/cesium',
+            path: 'cesium',
             name: 'cesium',
             component: () => import('@/views/home/components/cesium/index.vue'),
           },
           {
-            path: '/home/AMap',
-            name: 'cesium',
+            path: 'AMap',
+            name: 'AMap',
             component: () => import('@/views/home/components/AMap/index.vue'),
-          }
+          },
         ]
       },
       {

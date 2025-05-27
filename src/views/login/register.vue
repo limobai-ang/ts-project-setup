@@ -179,20 +179,17 @@ const handleRegister = () => {
   if (!formRef.value) return;
   formRef.value.validate(async (valid, fields) => {
     if (!valid) return
-    try {
-      isSubmitting.value = true;
-      // 在此处执行注册逻辑，例如发送数据到后端
-      await addUser(form)
-      ElMessage.success('用户注册成功！');
-
-      // 重置表单
-      formRef.value.resetFields();
+    isSubmitting.value = true;
+    addUser(form).then(res => {
+      ElMessage.success('注册成功，请登录');
       toLogin()
-    } catch (error) {
-      ElMessage.error(error);
-    } finally {
+    }).catch(err => {
+      console.log(err, 'err');
+
+      ElMessage.error(err.data.message || '注册失败，请稍后再试');
+    }).finally(() => {
       isSubmitting.value = false;
-    }
+    })
   })
 
 };
