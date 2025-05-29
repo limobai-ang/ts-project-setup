@@ -32,20 +32,40 @@ const createAMap = async () => {
 
 
 const initAMap = () => {
-  const markerList = getMockMarkerList(10000);
-
+  const markerList = [
+    {
+      "id": 179,
+      "lng": 116.441,
+      "lat": 39.947813,
+      "type": "type2",
+      "label": "点位 179"
+    },
+    {
+      "id": 835,
+      "lng": 116.432104,
+      "lat": 39.952145,
+      "type": "type4",
+      "label": "点位 835"
+    },
+    {
+      "id": 1834,
+      "lng": 116.438646,
+      "lat": 39.956243,
+      "type": "type1",
+      "label": "点位 1834"
+    }
+  ]
   const { start, clear, update, getMarkers } = useBatchMarker(map, {
     data: markerList,
     getPosition: item => [item.lng, item.lat],
     renderMarker: item => `<div class="marker marker-${item.type}">${item.label}</div>`,
 
     // 开启分批渲染
-    sliceRender: true,
-    batchSize: 50,
-    interval: 100,
-
+    // sliceRender: true,
+    batchSize: 10,
     // 开启边缘优化
     optimizeByBounds: true,
+    scheduler: 'idle', // 使用空闲时间渲染
     // 注册点位事件
     events: {
       click: item => {
@@ -73,6 +93,12 @@ const initAMap = () => {
 
   map.on('moveend', () => {
     const markers = getMarkers()
+  });
+  map.on('click', (ev) => {
+
+    //触发事件的地理坐标，AMap.LngLat 类型
+    var lnglat = ev.lnglat;
+    console.log(lnglat, '地图点击事件');
   });
 }
 
