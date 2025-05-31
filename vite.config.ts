@@ -9,6 +9,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   return {
+    base: './', // 用于相对路径部署，防止资源 404
     // 插件配置
     plugins: [
       vue(), // Vue 插件
@@ -38,15 +39,15 @@ export default defineConfig(({ mode }) => {
     // 构建配置
     build: {
       outDir: 'dist', // 输出目录
-      assetsDir: 'assets', // 静态资源目录
+      assetsDir: 'static', // 静态资源目录
       sourcemap: true, // 生成 sourcemap
-      minify: 'terser', // 代码压缩工具
-      terserOptions: { // Terser 配置
-        compress: {
-          drop_console: true, // 移除 console.log
-          drop_debugger: true, // 移除 debugger
-        },
-      },
+      minify: 'esbuild', // 代码压缩工具
+      // terserOptions: { // Terser 配置
+      //   compress: {
+      //     drop_console: true, // 移除 console.log
+      //     drop_debugger: true, // 移除 debugger
+      //   },
+      // },
       rollupOptions: { // Rollup 配置
         output: {
           manualChunks: { // 手动分块
