@@ -32,34 +32,22 @@ const createAMap = async () => {
 
 
 const initAMap = () => {
-  const markerList = [
-    {
-      "id": 179,
-      "lng": 116.441,
-      "lat": 39.947813,
-      "type": "type2",
-      "label": "点位 179"
-    },
-    {
-      "id": 835,
-      "lng": 116.432104,
-      "lat": 39.952145,
-      "type": "type4",
-      "label": "点位 835"
-    },
-    {
-      "id": 1834,
-      "lng": 116.438646,
-      "lat": 39.956243,
-      "type": "type1",
-      "label": "点位 1834"
-    }
-  ]
+  const markerList = getMockMarkerList(1000);
   const { start, clear, update, getMarkers } = useBatchMarker(map, {
     data: markerList,
     getPosition: item => [item.lng, item.lat],
     renderMarker: item => `<div class="marker marker-${item.type}">${item.label}</div>`,
+    getMarkerOffset: (element) => {
+      // 判断element 否是 HTMLElement
+      if (!(element instanceof HTMLElement)) {
 
+        return new AMap.Pixel(0, 0);
+      } else {
+        // 获取元素的宽度和高度
+        const rect = element.getBoundingClientRect();
+        return new AMap.Pixel(-rect.width / 2, -rect.height);
+      }
+    },
     // 开启分批渲染
     // sliceRender: true,
     batchSize: 10,
