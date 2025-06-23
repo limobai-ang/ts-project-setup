@@ -47,6 +47,11 @@ const routes = [
             name: 'AMap',
             component: () => import('@/views/home/components/AMap/index.vue'),
           },
+          {
+            path: 'ThreeJS',
+            name: 'ThreeJS',
+            component: () => import('@/views/home/components/ThreeJS/index.vue'),
+          },
         ]
       },
       {
