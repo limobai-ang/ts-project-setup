@@ -31,7 +31,7 @@
                 <el-menu-item index="/home/AMap">高德地图</el-menu-item>
               </el-menu-item-group>
               <el-menu-item-group>
-                <el-menu-item index="/home/ThreeJS">ThreeJS</el-menu-item>
+                <el-menu-item index="/home/Three">Three</el-menu-item>
               </el-menu-item-group>
             </el-sub-menu>
           </el-menu>

@@ -48,8 +48,8 @@ const routes = [
             component: () => import('@/views/home/components/AMap/index.vue'),
           },
           {
-            path: 'ThreeJS',
-            name: 'ThreeJS',
+            path: 'Three',
+            name: 'Three',
             component: () => import('@/views/home/components/ThreeJS/index.vue'),
           },
         ]

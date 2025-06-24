@@ -12,76 +12,44 @@ import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 
 const canvasRef = ref()
 
+// 全局配置对象
+const config = {
+  boardSize: { width: 200, height: 200 },
+  tileSize: { width: 4, height: 6, depth: 2, gap: 0.5 },
+  regions: {
+    hand: { z: 90 },
+    wall: { z: 70 },
+    discard: { z: 30 },
+  },
+}
+
 onMounted(() => {
   const scene = new THREE.Scene()
-  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
-  camera.position.set(-100, 200, 400)
-  camera.lookAt(0, 0, 30)
+  const camera = createCamera()
+  const renderer = createRenderer(canvasRef.value)
+  const controls = createControls(camera, renderer)
 
-  const renderer = new THREE.WebGLRenderer({ canvas: canvasRef.value, antialias: true })
-  renderer.setSize(window.innerWidth, window.innerHeight)
-  renderer.setClearColor(0x35654d)
-
-  const controls = new OrbitControls(camera, renderer.domElement)
-  controls.enableDamping = true
-  controls.dampingFactor = 0.05
-  controls.screenSpacePanning = false
-  controls.minDistance = 100
-  controls.maxDistance = 800
-  controls.maxPolarAngle = Math.PI / 2.2
-  controls.target.set(0, 0, 30)
-
-  const ambientLight = new THREE.AmbientLight(0xffffff, 0.6)
-  scene.add(ambientLight)
-  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
-  directionalLight.position.set(0, 100, 100)
-  scene.add(directionalLight)
-
-  const axesHelper = new THREE.AxesHelper(100)
-  scene.add(axesHelper)
-
-  const boardGeometry = new THREE.PlaneGeometry(200, 200)
-  const boardMaterial = new THREE.MeshStandardMaterial({ color: 0x228b22 })
-  const board = new THREE.Mesh(boardGeometry, boardMaterial)
-  board.rotation.x = -Math.PI / 2
+  addLights(scene)
+  addHelpers(scene)
+  const board = createBoard()
   scene.add(board)
 
-  const tileWidth = 4
-  const tileHeight = 6
-  const tileDepth = 2
-  const tileGap = 0.5
-  const tileGeometry = new RoundedBoxGeometry(tileWidth, tileHeight, tileDepth, 5, 0.3)
-  const tileMaterial = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.4, metalness: 0.2 })
-  const tiles = []
+  const tiles = createHandTiles(scene)
+  createWall(scene, config.tileSize)
 
-  for (let i = 0; i < 13; i++) {
-    const tile = new THREE.Mesh(tileGeometry, tileMaterial.clone())
-    tile.position.set((i - 6) * (tileWidth + tileGap), tileHeight / 2, 0)
-    tile.userData.originalColor = tile.material.color.clone()
-    tile.userData.baseY = tile.position.y
-    tile.userData.index = i
-    scene.add(tile)
-    tiles.push(tile)
-  }
-
-  const raycaster = new THREE.Raycaster()
-  const mouse = new THREE.Vector2()
   let selectedTile = null
   let dragging = false
   let dragOffset = new THREE.Vector3()
   let insertIndex = -1
+  const raycaster = new THREE.Raycaster()
+  const mouse = new THREE.Vector2()
 
-  function getIntersectedTile(event) {
-    const rect = renderer.domElement.getBoundingClientRect()
-    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-    raycaster.setFromCamera(mouse, camera)
-    const intersects = raycaster.intersectObjects(tiles)
-    return intersects.length > 0 ? intersects[0] : null
-  }
+  renderer.domElement.addEventListener('mousedown', onMouseDown)
+  renderer.domElement.addEventListener('mousemove', onMouseMove)
+  renderer.domElement.addEventListener('mouseup', onMouseUp)
 
   function onMouseDown(event) {
-    const hit = getIntersectedTile(event)
+    const hit = getIntersectedTile(event, tiles)
     if (hit) {
       if (selectedTile && selectedTile !== hit.object) {
         selectedTile.material.color.copy(selectedTile.userData.originalColor)
@@ -89,11 +57,18 @@ onMounted(() => {
       }
       selectedTile = hit.object
       selectedTile.material.color.set(0xffaa00)
-      selectedTile.position.y = tileHeight / 2 + 1
+      selectedTile.position.y = config.tileSize.height / 2 + 1
       dragging = true
       controls.enabled = false
 
-      dragOffset.copy(hit.point).sub(selectedTile.position)
+      const rect = renderer.domElement.getBoundingClientRect()
+      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+      raycaster.setFromCamera(mouse, camera)
+      const intersects = raycaster.intersectObject(board)
+      if (intersects.length > 0) {
+        dragOffset.copy(intersects[0].point).sub(selectedTile.position)
+      }
     }
   }
 
@@ -103,19 +78,16 @@ onMounted(() => {
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(mouse, camera)
-
       const intersects = raycaster.intersectObject(board)
       if (intersects.length > 0) {
         const point = intersects[0].point.clone().sub(dragOffset)
-        selectedTile.position.set(point.x, tileHeight / 2 + 1, point.z)
-
-        insertIndex = Math.max(0, Math.min(tiles.length, Math.round(point.x / (tileWidth + tileGap)) + 6))
-
+        selectedTile.position.set(point.x, config.tileSize.height / 2 + 1, point.z)
+        insertIndex = Math.max(0, Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + 6))
         tiles.forEach((tile, i) => {
           if (tile !== selectedTile) {
             let offset = 0
-            if (i >= insertIndex) offset = tileWidth + tileGap
-            const targetX = (i - 6) * (tileWidth + tileGap) + offset
+            if (i >= insertIndex) offset = config.tileSize.width + config.tileSize.gap
+            const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap) + offset
             tile.userData.targetX = targetX
           }
         })
@@ -125,25 +97,19 @@ onMounted(() => {
 
   function onMouseUp() {
     if (selectedTile) {
-      selectedTile.position.y = tileHeight / 2
+      selectedTile.position.y = config.tileSize.height / 2
       selectedTile.material.color.copy(selectedTile.userData.originalColor)
       dragging = false
       controls.enabled = true
-
       tiles.splice(tiles.indexOf(selectedTile), 1)
       tiles.splice(insertIndex, 0, selectedTile)
-
       tiles.forEach((tile, i) => {
-        const targetX = (i - 6) * (tileWidth + tileGap)
+        const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
         tile.userData.index = i
         tile.userData.targetX = targetX
       })
     }
   }
-
-  renderer.domElement.addEventListener('mousedown', onMouseDown)
-  renderer.domElement.addEventListener('mousemove', onMouseMove)
-  renderer.domElement.addEventListener('mouseup', onMouseUp)
 
   const animate = () => {
     requestAnimationFrame(animate)
@@ -163,6 +129,123 @@ onMounted(() => {
     renderer.setSize(window.innerWidth, window.innerHeight)
   })
 })
+
+function createCamera() {
+  const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
+  camera.position.set(-100, 200, 400)
+  camera.lookAt(0, 0, 30)
+  return camera
+}
+
+function createRenderer(canvas) {
+  const renderer = new THREE.WebGLRenderer({ canvas, antialias: true })
+  renderer.setSize(window.innerWidth, window.innerHeight)
+  renderer.setClearColor(0x35654d)
+  return renderer
+}
+
+function createControls(camera, renderer) {
+  const controls = new OrbitControls(camera, renderer.domElement)
+  controls.enableDamping = true
+  controls.dampingFactor = 0.05
+  controls.screenSpacePanning = false
+  controls.minDistance = 100
+  controls.maxDistance = 800
+  controls.maxPolarAngle = Math.PI / 2.2
+  controls.target.set(0, 0, 30)
+  return controls
+}
+
+function addLights(scene) {
+  scene.add(new THREE.AmbientLight(0xffffff, 0.6))
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 0.6)
+  directionalLight.position.set(0, 100, 100)
+  scene.add(directionalLight)
+}
+
+function addHelpers(scene) {
+  scene.add(new THREE.AxesHelper(100))
+}
+
+function createBoard() {
+  const geometry = new THREE.PlaneGeometry(config.boardSize.width, config.boardSize.height)
+  const material = new THREE.MeshStandardMaterial({ color: 0x228b22 })
+  const board = new THREE.Mesh(geometry, material)
+  board.rotation.x = -Math.PI / 2
+  return board
+}
+
+function createHandTiles(scene) {
+  const tiles = []
+  const tileGeometry = new RoundedBoxGeometry(config.tileSize.width, config.tileSize.height, config.tileSize.depth, 5, 0.3)
+  for (let i = 0; i < 13; i++) {
+    const material = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.4, metalness: 0.2 })
+    const tile = new THREE.Mesh(tileGeometry, material)
+    tile.position.set((i - 6) * (config.tileSize.width + config.tileSize.gap), config.tileSize.height / 2, config.regions.hand.z)
+    tile.userData.originalColor = tile.material.color.clone()
+    tile.userData.baseY = tile.position.y
+    tile.userData.index = i
+    scene.add(tile)
+    tiles.push(tile)
+  }
+  return tiles
+}
+function createWall(scene, size) {
+  const geometry = new RoundedBoxGeometry(size.width, size.height, size.depth, 5, 0.2)
+  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
+
+  const columns = 17
+  const gapY = size.depth // 叠放高度使用 depth
+
+  const directions = [
+    { angle: 0, x: 0, z: config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 }, // 南
+    { angle: 0, x: config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 }, // 西
+    { angle: 0, x: 0, z: -config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 }, // 北
+    { angle: 0, x: -config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 } // 东
+  ]
+
+  directions.forEach(dir => {
+    const start = -(columns / 2 - 0.5) * (size.width + 0.2)
+
+    for (let i = 0; i < columns; i++) {
+      for (let j = 0; j < 2; j++) {
+        const wallTile = new THREE.Mesh(geometry, material.clone())
+        const offset = start + i * (size.width + 0.2)
+        const yOffset = size.height / 2 + j * gapY // 用 height 来作为贴地堆叠参考
+
+        // 设置位置
+        let x = dir.x
+        let y = yOffset
+        let z = dir.z
+        if (dir.horizontal === 'x') {
+          x += offset
+        } else {
+          z += offset
+        }
+
+        wallTile.position.set(x, y, z)
+
+        // 修正左右两边单张牌旋转方向，使其平放
+        wallTile.rotation.set(dir.rotateX, dir.angle, dir.rotateZ)
+
+        scene.add(wallTile)
+      }
+    }
+  })
+}
+
+
+
+function getIntersectedTile(event, tiles) {
+  const rect = event.target.getBoundingClientRect()
+  const mouse = new THREE.Vector2()
+  mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+  mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+  const raycaster = new THREE.Raycaster()
+  raycaster.setFromCamera(mouse, camera)
+  const intersects = raycaster.intersectObjects(tiles)
+  return intersects.length > 0 ? intersects[0] : null
+}
 </script>
 
 <style scoped>
@@ -171,6 +254,7 @@ onMounted(() => {
   height: 100vh;
   overflow: hidden;
 }
+
 .mahjong-canvas {
   display: block;
   cursor: pointer;
