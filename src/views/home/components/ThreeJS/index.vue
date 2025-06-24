@@ -23,9 +23,11 @@ const config = {
   },
 }
 
+// 相机
+let camera;
 onMounted(() => {
   const scene = new THREE.Scene()
-  const camera = createCamera()
+  camera = createCamera()
   const renderer = createRenderer(canvasRef.value)
   const controls = createControls(camera, renderer)
 
@@ -78,11 +80,20 @@ onMounted(() => {
       mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
       mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
       raycaster.setFromCamera(mouse, camera)
+
       const intersects = raycaster.intersectObject(board)
       if (intersects.length > 0) {
         const point = intersects[0].point.clone().sub(dragOffset)
-        selectedTile.position.set(point.x, config.tileSize.height / 2 + 1, point.z)
-        insertIndex = Math.max(0, Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + 6))
+       
+        // ✅ 只更新 X、Z，保留 Y（保持用户手动 Y 高度，例如牌抬高状态）
+        selectedTile.position.x = point.x
+        selectedTile.position.z = point.z
+
+        insertIndex = Math.max(
+          0,
+          Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + 6)
+        )
+
         tiles.forEach((tile, i) => {
           if (tile !== selectedTile) {
             let offset = 0
@@ -95,18 +106,23 @@ onMounted(() => {
     }
   }
 
+
   function onMouseUp() {
     if (selectedTile) {
       selectedTile.position.y = config.tileSize.height / 2
+      selectedTile.position.z = 90 // ✅ 恢复 z 轴位置
       selectedTile.material.color.copy(selectedTile.userData.originalColor)
       dragging = false
       controls.enabled = true
+
       tiles.splice(tiles.indexOf(selectedTile), 1)
       tiles.splice(insertIndex, 0, selectedTile)
+
       tiles.forEach((tile, i) => {
         const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
         tile.userData.index = i
         tile.userData.targetX = targetX
+        tile.userData.targetZ = 0 // ✅ 可选：用于动画平滑恢复 z 轴
       })
     }
   }
@@ -132,8 +148,8 @@ onMounted(() => {
 
 function createCamera() {
   const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000)
-  camera.position.set(-100, 200, 400)
-  camera.lookAt(0, 0, 30)
+  camera.position.set(0, 100, 200)
+  camera.lookAt(0, 0, 0)
   return camera
 }
 
