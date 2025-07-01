@@ -9,7 +9,7 @@ import { onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-
+import { createMahjongTile } from './createMahjongTile.js'
 const canvasRef = ref()
 
 // 全局配置对象：包含棋盘尺寸、麻将尺寸、各区域位置
@@ -21,6 +21,12 @@ const config = {
     wall: { z: 70 },     // 牌墙区域 z 坐标
     discard: { z: 30 },  // 弃牌区域 z 坐标
   },
+  colors: {
+    front: 0xffffff, // 正面白色
+    back: 0x0066cc,  // 背面蓝色
+    gradientStartZ: 150,  // 渐变开始 z
+    gradientEndZ: 30      // 渐变结束 z（越靠中间越深）
+  }
 }
 
 let camera;
@@ -42,11 +48,11 @@ onMounted(() => {
   // 鼠标交互变量
   let selectedTile = null
   let dragging = false
+  let behavior = null  // 行为动作
   let dragOffset = new THREE.Vector3()
   let insertIndex = -1
   const raycaster = new THREE.Raycaster()
   const mouse = new THREE.Vector2()
-
   // 绑定鼠标事件
   renderer.domElement.addEventListener('mousedown', onMouseDown)
   renderer.domElement.addEventListener('mousemove', onMouseMove)
@@ -55,10 +61,17 @@ onMounted(() => {
   // 鼠标按下：选中牌并准备拖拽
   function onMouseDown(event) {
     // 使用射线（Raycaster）判断鼠标点击的是否是一个麻将牌（tile）。如果是，就会返回被点击的对象。
-    const hit = getIntersectedTile(event, tiles)
+    const hit = getIntersectedTile(event, tiles)  // 这是移动手牌操作 从手牌中找
 
-    const hiw = getIntersectedTile(event, wall)
+    const hiw = getIntersectedTile(event, wall)  // 这是从牌墙中取牌的操作 从牌墙中找
+
+    // 取牌
     if (hiw) {
+      behavior = 'obtain'
+      if (selectedTile && selectedTile !== hiw.object) {
+        selectedTile.material.color.copy(selectedTile.userData.originalColor)
+        selectedTile.position.y = selectedTile.userData.baseY
+      }
       selectedTile = hiw.object
       selectedTile.material.color.set(0xffaa00) // 高亮颜色
       selectedTile.position.y = config.tileSize.depth * 3
@@ -78,6 +91,8 @@ onMounted(() => {
 
     // 如果点击到了麻将牌，取消之前选中牌的高亮与浮起状态，还原它的材质颜色、Y 位置（高度）。
     if (hit) {
+      // 移动手牌调整位置
+      behavior = 'move'  // 移动
       if (selectedTile && selectedTile !== hit.object) {
         selectedTile.material.color.copy(selectedTile.userData.originalColor)
         selectedTile.position.y = selectedTile.userData.baseY
@@ -104,58 +119,124 @@ onMounted(() => {
   // 鼠标移动：实时拖动选中牌
   function onMouseMove(event) {
     if (dragging && selectedTile) {
-      const rect = renderer.domElement.getBoundingClientRect()
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(mouse, camera)
 
-      const intersects = raycaster.intersectObject(board)
-      if (intersects.length > 0) {
-        const point = intersects[0].point.clone().sub(dragOffset)
+      // 取牌的逻辑
+      if (behavior == 'obtain') {
+        const rect = renderer.domElement.getBoundingClientRect()
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+        raycaster.setFromCamera(mouse, camera)
+        const intersects = raycaster.intersectObject(board)
+        if (intersects.length > 0) {
+          const point = intersects[0].point.clone().sub(dragOffset)
 
-        // 只更新 x/z 坐标（保留拖动状态下的 y）
-        selectedTile.position.x = point.x
-        selectedTile.position.z = point.z
+          // 只更新 x/z 坐标（保留拖动状态下的 y）
+          selectedTile.position.x = point.x
+          selectedTile.position.z = point.z
 
-        // 计算插入索引，保持动态排序
-        insertIndex = Math.max(
-          0,
-          Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + 6)
-        )
+          selectedTile.rotation.set(0, 0, 0)
 
-        // 给其他牌设置目标位置，让出空间
-        tiles.forEach((tile, i) => {
-          if (tile !== selectedTile) {
-            let offset = 0
-            if (i >= insertIndex) offset = config.tileSize.width + config.tileSize.gap
-            const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap) + offset
-            tile.userData.targetX = targetX
-          }
-        })
+          // 计算插入索引，保持动态排序
+          insertIndex = Math.max(
+            0,
+            Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + 6)
+          )
+
+          // 给其他牌设置目标位置，让出空间
+          tiles.forEach((tile, i) => {
+            if (tile !== selectedTile) {
+              let offset = 0
+              if (i >= insertIndex) offset = config.tileSize.width + config.tileSize.gap
+              const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap) + offset
+              tile.userData.targetX = targetX
+            }
+          })
+        }
+
+
+
+      } else if (behavior == 'move') {
+        const rect = renderer.domElement.getBoundingClientRect()
+        mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+        mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+        raycaster.setFromCamera(mouse, camera)
+
+        const intersects = raycaster.intersectObject(board)
+        if (intersects.length > 0) {
+          const point = intersects[0].point.clone().sub(dragOffset)
+
+          // 只更新 x/z 坐标（保留拖动状态下的 y）
+          selectedTile.position.x = point.x
+          selectedTile.position.z = point.z
+
+          // 计算插入索引，保持动态排序
+          insertIndex = Math.max(
+            0,
+            Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + 6)
+          )
+
+          // 给其他牌设置目标位置，让出空间
+          tiles.forEach((tile, i) => {
+            if (tile !== selectedTile) {
+              let offset = 0
+              if (i >= insertIndex) offset = config.tileSize.width + config.tileSize.gap
+              const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap) + offset
+              tile.userData.targetX = targetX
+            }
+          })
+        }
       }
     }
   }
 
   // 鼠标松开：插入新位置、归位
   function onMouseUp() {
+
     if (selectedTile) {
-      selectedTile.position.y = config.tileSize.height / 2
-      selectedTile.position.z = config.regions.hand.z // 归位 z
-      selectedTile.material.color.copy(selectedTile.userData.originalColor)
-      dragging = false
-      controls.enabled = true
+      // 取牌操作
+      if (behavior === 'obtain') {
+        selectedTile.position.y = config.tileSize.height / 2
+        selectedTile.position.z = config.regions.hand.z // 归位 z
+        selectedTile.material.color.copy(selectedTile.userData.originalColor)
+        dragging = false
+        controls.enabled = true
 
-      // 插入数组排序位置
-      tiles.splice(tiles.indexOf(selectedTile), 1)
-      tiles.splice(insertIndex, 0, selectedTile)
+        // 插入数组排序位置
+        tiles.push(selectedTile)
+        tiles.splice(insertIndex, 0, selectedTile)
 
-      // 更新所有牌目标位置（用于动画）
-      tiles.forEach((tile, i) => {
-        const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
-        tile.userData.index = i
-        tile.userData.targetX = targetX
-        tile.userData.targetZ = config.regions.hand.z
-      })
+        // 更新所有牌目标位置（用于动画）
+        tiles.forEach((tile, i) => {
+          const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
+          tile.userData.index = i
+          tile.userData.targetX = targetX
+          tile.userData.targetZ = config.regions.hand.z
+        })
+      }
+
+      // 移动操作
+      if (behavior === 'move') {
+        selectedTile.position.y = config.tileSize.height / 2
+        selectedTile.position.z = config.regions.hand.z // 归位 z
+        selectedTile.material.color.copy(selectedTile.userData.originalColor)
+        dragging = false
+        controls.enabled = true
+
+        // 插入数组排序位置
+        tiles.splice(tiles.indexOf(selectedTile), 1)
+        tiles.splice(insertIndex, 0, selectedTile)
+
+        // 更新所有牌目标位置（用于动画）
+        tiles.forEach((tile, i) => {
+          const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
+          tile.userData.index = i
+          tile.userData.targetX = targetX
+          tile.userData.targetZ = config.regions.hand.z
+        })
+      }
+
+      behavior = null
+      selectedTile = null
     }
   }
 
@@ -231,27 +312,25 @@ function createBoard() {
   return board
 }
 
-// 创建玩家手牌并返回数组
 function createHandTiles(scene) {
   const tiles = []
-  const tileGeometry = new RoundedBoxGeometry(config.tileSize.width, config.tileSize.height, config.tileSize.depth, 5, 0.3)
+  const { width, height, depth, gap } = config.tileSize
+  
   for (let i = 0; i < 13; i++) {
-    const material = new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.4, metalness: 0.2 })
-    const tile = new THREE.Mesh(tileGeometry, material)
-    tile.position.set((i - 6) * (config.tileSize.width + config.tileSize.gap), config.tileSize.height / 2, config.regions.hand.z)
-    tile.userData.originalColor = tile.material.color.clone()
+    const tile = createMahjongTile({ width, height, depth })
+    tile.position.set((i - 6) * (width + gap), height / 2, config.regions.hand.z)
+    tile.userData.originalColor = tile.material[4].color.clone() // 正面原色
     tile.userData.baseY = tile.position.y
     tile.userData.index = i
     scene.add(tile)
     tiles.push(tile)
   }
+
   return tiles
 }
 
 // 创建 4 面麻将墙
 function createWall(scene, size) {
-  const geometry = new RoundedBoxGeometry(size.width, size.height, size.depth, 5, 0.2)
-  const material = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3 })
 
   const columns = 17
   const gapY = size.depth
@@ -259,10 +338,10 @@ function createWall(scene, size) {
   const wall = []
 
   const directions = [
-    { angle: 0, x: 0, z: config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },       // 南
-    { angle: 0, x: config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 }, // 西
-    { angle: 0, x: 0, z: -config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },      // 北
-    { angle: 0, x: -config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 }  // 东
+    { angle: -Math.PI, x: 0, z: config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },       // 南
+    { angle: -Math.PI, x: config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 }, // 西
+    { angle: -Math.PI, x: 0, z: -config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },      // 北
+    { angle: -Math.PI, x: -config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 }  // 东
   ]
 
   directions.forEach(dir => {
@@ -270,7 +349,7 @@ function createWall(scene, size) {
 
     for (let i = 0; i < columns; i++) {
       for (let j = 0; j < 2; j++) {
-        const wallTile = new THREE.Mesh(geometry, material.clone())
+        const wallTile = createMahjongTile(size)
         const offset = start + i * (size.width + 0.2)
         const yOffset = size.height / 2 + j * gapY
 
@@ -283,7 +362,8 @@ function createWall(scene, size) {
 
         wallTile.position.set(x, y, z)
         wallTile.rotation.set(dir.rotateX, dir.angle, dir.rotateZ)
-
+        // wallTile.userData.originalColor = wallTile.material.color.clone()
+        wallTile.userData.baseY = wallTile.position.y
         wall.push(wallTile)
         scene.add(wallTile)
       }
