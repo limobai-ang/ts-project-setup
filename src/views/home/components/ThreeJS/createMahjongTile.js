@@ -35,8 +35,8 @@ function createGradientTexture(colorStart, colorEnd, direction = 'vertical', rev
   return texture
 }
 
-
-export function createMahjongTile(size = { width: 4, height: 6, depth: 2 }) {
+// 创建麻将模型
+export function createMahjongTile(size = { width: 4, height: 6, depth: 2 }, frontData = { frontImage: '/image/yitiao.png' }) {
   const geometry = new RoundedBoxGeometry(size.width, size.height, size.depth, 5, 0.3)
 
   const colorStart = '#409eff' // 蓝色背面
@@ -55,8 +55,40 @@ export function createMahjongTile(size = { width: 4, height: 6, depth: 2 }) {
   const matYPos = new THREE.MeshStandardMaterial({ map: texYPos, roughness: 0.4, metalness: 0.2 })
   const matYNeg = new THREE.MeshStandardMaterial({ map: texYNeg, roughness: 0.4, metalness: 0.2 })
 
-  const frontMat = new THREE.MeshStandardMaterial({ color: colorEnd, roughness: 0.4, metalness: 0.2 }) // +Z 正面白
-  const backMat  = new THREE.MeshStandardMaterial({ color: colorStart, roughness: 0.4, metalness: 0.2 }) // -Z 背面蓝
+  // 正面材质：白色底色 + PNG 图标贴图
+  let frontMat
+  if (frontData.frontImage) {
+    let tex = frontData.frontImage
+    if (typeof frontData.frontImage === 'string') {
+      tex = new THREE.TextureLoader().load(frontData.frontImage)
+      // 缩放贴图 —— repeat 越小图越小（例如 0.5 表示贴图缩小一半）
+      tex.repeat.set(0.5, 0.9)
+      // 移动贴图位置 —— offset (0, 0) 是左下角，(0.25, 0.25) 是向右上移动一点
+      tex.offset.set(0.2, 0)
+
+      // 重要：必须设置 wrap 模式，才能使 repeat 和 offset 生效
+      tex.wrapS = THREE.ClampToEdgeWrapping
+      tex.wrapT = THREE.ClampToEdgeWrapping
+
+    }
+    tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping
+    frontMat = new THREE.MeshStandardMaterial({
+      color: '#ffffff',     // 白底
+      map: tex,             // PNG 贴图（含透明）
+      // transparent: true,    // 启用透明图层
+      roughness: 0.4,
+      metalness: 0.2,
+    })
+  } else {
+    frontMat = new THREE.MeshStandardMaterial({
+      color: '#ffffff',
+      roughness: 0.4,
+      metalness: 0.2,
+    })
+  }
+
+
+  const backMat = new THREE.MeshStandardMaterial({ color: colorStart, roughness: 0.4, metalness: 0.2 }) // -Z 背面蓝
 
   const materials = [
     matXPos,  // +X
@@ -68,7 +100,23 @@ export function createMahjongTile(size = { width: 4, height: 6, depth: 2 }) {
   ]
 
   const tile = new THREE.Mesh(geometry, materials)
-  tile.userData.originalColor = new THREE.Color(colorEnd)
+  tile.userData.originalColor = tile.material.map(m => m.color.clone())
   tile.userData.baseY = size.height / 2
   return tile
+}
+
+
+// 设置麻将颜色
+export function setMahjongTileColor(mahjongTile, color) {
+  // 如果没有传递颜色那么就就将颜色还原
+  if (!color) {
+    const originalColor = mahjongTile.userData.originalColor
+
+    mahjongTile.material.forEach((mat, index) => {
+      mat.color.set(originalColor[index])
+    })
+  }
+  mahjongTile.material.forEach((mat, index) => {
+    mat.color.set(color) // 高亮橙色
+  })
 }

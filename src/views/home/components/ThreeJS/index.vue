@@ -9,7 +9,7 @@ import { onMounted, ref } from 'vue'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
-import { createMahjongTile } from './createMahjongTile.js'
+import { createMahjongTile, setMahjongTileColor } from './createMahjongTile.js'
 const canvasRef = ref()
 
 // 全局配置对象：包含棋盘尺寸、麻将尺寸、各区域位置
@@ -62,57 +62,48 @@ onMounted(() => {
   function onMouseDown(event) {
     // 使用射线（Raycaster）判断鼠标点击的是否是一个麻将牌（tile）。如果是，就会返回被点击的对象。
     const hit = getIntersectedTile(event, tiles)  // 这是移动手牌操作 从手牌中找
-
     const hiw = getIntersectedTile(event, wall)  // 这是从牌墙中取牌的操作 从牌墙中找
 
+    if(!hit && !hiw) return
+    
+    // 如果点击到了麻将牌，取消之前选中牌的高亮与浮起状态，还原它的材质颜色、Y 位置（高度）。
     // 取牌
     if (hiw) {
       behavior = 'obtain'
       if (selectedTile && selectedTile !== hiw.object) {
-        selectedTile.material.color.copy(selectedTile.userData.originalColor)
+        setMahjongTileColor(selectedTile)
         selectedTile.position.y = selectedTile.userData.baseY
       }
       selectedTile = hiw.object
-      selectedTile.material.color.set(0xffaa00) // 高亮颜色
+      // 高亮颜色
       selectedTile.position.y = config.tileSize.depth * 3
-      dragging = true
-      controls.enabled = false
-
-      // 计算拖动偏移 映射到 -1 到 1 的范围，适配 WebGL 坐标系。
-      const rect = renderer.domElement.getBoundingClientRect()
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObject(board)
-      if (intersects.length > 0) {
-        dragOffset.copy(intersects[0].point).sub(selectedTile.position)
-      }
     }
 
-    // 如果点击到了麻将牌，取消之前选中牌的高亮与浮起状态，还原它的材质颜色、Y 位置（高度）。
     if (hit) {
+
       // 移动手牌调整位置
       behavior = 'move'  // 移动
       if (selectedTile && selectedTile !== hit.object) {
-        selectedTile.material.color.copy(selectedTile.userData.originalColor)
+        setMahjongTileColor(selectedTile)
         selectedTile.position.y = selectedTile.userData.baseY
       }
-
       selectedTile = hit.object
-      selectedTile.material.color.set(0xffaa00) // 高亮颜色
       selectedTile.position.y = config.tileSize.height / 2 + 1
-      dragging = true
-      controls.enabled = false
+    }
 
-      // 计算拖动偏移 映射到 -1 到 1 的范围，适配 WebGL 坐标系。
-      const rect = renderer.domElement.getBoundingClientRect()
-      mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
-      mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
-      raycaster.setFromCamera(mouse, camera)
-      const intersects = raycaster.intersectObject(board)
-      if (intersects.length > 0) {
-        dragOffset.copy(intersects[0].point).sub(selectedTile.position)
-      }
+    dragging = true
+    controls.enabled = false
+
+    setMahjongTileColor(selectedTile, '#ffaa00')
+
+    // 计算拖动偏移 映射到 -1 到 1 的范围，适配 WebGL 坐标系。
+    const rect = renderer.domElement.getBoundingClientRect()
+    mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
+    mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1
+    raycaster.setFromCamera(mouse, camera)
+    const intersects = raycaster.intersectObject(board)
+    if (intersects.length > 0) {
+      dragOffset.copy(intersects[0].point).sub(selectedTile.position)
     }
   }
 
@@ -153,8 +144,6 @@ onMounted(() => {
           })
         }
 
-
-
       } else if (behavior == 'move') {
         const rect = renderer.domElement.getBoundingClientRect()
         mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1
@@ -193,48 +182,32 @@ onMounted(() => {
   function onMouseUp() {
 
     if (selectedTile) {
+      selectedTile.position.y = config.tileSize.height / 2
+      selectedTile.position.z = config.regions.hand.z // 归位 z
+      dragging = false
+      controls.enabled = true
+      setMahjongTileColor(selectedTile)
       // 取牌操作
       if (behavior === 'obtain') {
-        selectedTile.position.y = config.tileSize.height / 2
-        selectedTile.position.z = config.regions.hand.z // 归位 z
-        selectedTile.material.color.copy(selectedTile.userData.originalColor)
-        dragging = false
-        controls.enabled = true
-
         // 插入数组排序位置
         tiles.push(selectedTile)
         tiles.splice(insertIndex, 0, selectedTile)
-
-        // 更新所有牌目标位置（用于动画）
-        tiles.forEach((tile, i) => {
-          const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
-          tile.userData.index = i
-          tile.userData.targetX = targetX
-          tile.userData.targetZ = config.regions.hand.z
-        })
       }
 
       // 移动操作
       if (behavior === 'move') {
-        selectedTile.position.y = config.tileSize.height / 2
-        selectedTile.position.z = config.regions.hand.z // 归位 z
-        selectedTile.material.color.copy(selectedTile.userData.originalColor)
-        dragging = false
-        controls.enabled = true
-
         // 插入数组排序位置
         tiles.splice(tiles.indexOf(selectedTile), 1)
         tiles.splice(insertIndex, 0, selectedTile)
-
-        // 更新所有牌目标位置（用于动画）
-        tiles.forEach((tile, i) => {
-          const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
-          tile.userData.index = i
-          tile.userData.targetX = targetX
-          tile.userData.targetZ = config.regions.hand.z
-        })
       }
 
+      // 更新所有牌目标位置（用于动画）
+      tiles.forEach((tile, i) => {
+        const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
+        tile.userData.index = i
+        tile.userData.targetX = targetX
+        tile.userData.targetZ = config.regions.hand.z
+      })
       behavior = null
       selectedTile = null
     }
@@ -315,11 +288,10 @@ function createBoard() {
 function createHandTiles(scene) {
   const tiles = []
   const { width, height, depth, gap } = config.tileSize
-  
+
   for (let i = 0; i < 13; i++) {
     const tile = createMahjongTile({ width, height, depth })
     tile.position.set((i - 6) * (width + gap), height / 2, config.regions.hand.z)
-    tile.userData.originalColor = tile.material[4].color.clone() // 正面原色
     tile.userData.baseY = tile.position.y
     tile.userData.index = i
     scene.add(tile)
