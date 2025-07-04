@@ -161,16 +161,16 @@ onMounted(() => {
         // 取牌放入手牌
         if (behavior === 'obtain') {
           // 插入数组排序位置
-          tiles.push(selectedTile)
           tiles.splice(insertIndex, 0, selectedTile)
-
-          console.log('取牌放入手牌');
         }
         // 移动整理手牌
         if (behavior === 'move') {
           // 插入数组排序位置
-          tiles.splice(tiles.indexOf(selectedTile), 1)
-          tiles.splice(insertIndex, 0, selectedTile)
+          if (insertIndex && insertIndex >= 0) {
+            tiles.splice(tiles.indexOf(selectedTile), 1)
+            tiles.splice(insertIndex, 0, selectedTile)
+          }
+
 
           console.log('移动整理手牌');
         }
@@ -179,7 +179,7 @@ onMounted(() => {
       }
       // 更新所有牌目标位置（用于动画）
       tiles.forEach((tile, i) => {
-        const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap)
+        const targetX = (i - Math.floor(tiles.length / 2)) * (config.tileSize.width + config.tileSize.gap)
         tile.userData.index = i
         tile.userData.targetX = targetX
         tile.userData.targetZ = config.regions.hand.z
@@ -188,6 +188,7 @@ onMounted(() => {
       dragging = false
       controls.enabled = true
       selectedTile = null
+      insertIndex = null
     }
   }
 
