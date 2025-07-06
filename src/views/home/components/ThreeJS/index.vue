@@ -10,7 +10,13 @@ import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createMahjongTile, setMahjongTileColor } from './createMahjongTile.js'
+import { generateWalls, createWallFromTiles } from './initTileData.js'
+
 const canvasRef = ref()
+
+const wallData = generateWalls()
+console.log(wallData, 'wallData');
+
 
 // 全局配置对象：包含棋盘尺寸、麻将尺寸、各区域位置
 const config = {
@@ -45,7 +51,8 @@ onMounted(() => {
   scene.add(board)
 
   const tiles = createHandTiles(scene) // 创建手牌
-  const wall = createWall(scene, config.tileSize)   // 创建四面牌墙
+  const wall = createWallFromTiles(scene, config, wallData)  // 创建四面牌墙
+  const discard = []
 
   // 鼠标交互变量
   let selectedTile = null
@@ -138,8 +145,6 @@ onMounted(() => {
 
     if (selectedTile) {
       const point = getPoint(event)
-      console.log(point, 'point');
-
       if (!point) return
 
       // 判定用户操作 根据z轴的位置判断
@@ -147,14 +152,18 @@ onMounted(() => {
         // 取牌放入弃牌
         if (behavior === 'obtain') {
           // 取牌后直接弃牌
-          console.log('直接弃牌');
+          selectedTile.rotation.set(-Math.PI / 2, 0, 0)
+          selectedTile.position.y = 1
+          discard.push(selectedTile)
         }
         // 从手牌取牌放入弃牌区
         if (behavior === 'move') {
           selectedTile.rotation.set(-Math.PI / 2, 0, 0)
           selectedTile.position.y = 1
           tiles.splice(tiles.indexOf(selectedTile), 1)
+
           console.log('从手牌取牌放入弃牌区');
+          discard.push(selectedTile)
 
         }
       } else if (Math.abs(point.z) >= config.regions.wall.z) {
@@ -280,48 +289,6 @@ function createHandTiles(scene) {
   return tiles
 }
 
-// 创建 4 面麻将墙
-function createWall(scene, size) {
-
-  const columns = 17
-  const gapY = size.depth
-
-  const wall = []
-
-  const directions = [
-    { angle: -Math.PI, x: 0, z: config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },       // 南
-    { angle: -Math.PI, x: config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 }, // 西
-    { angle: -Math.PI, x: 0, z: -config.regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },      // 北
-    { angle: -Math.PI, x: -config.regions.wall.z, z: 0, horizontal: 'z', rotateX: -Math.PI / 2, rotateZ: Math.PI / 2 }  // 东
-  ]
-
-  directions.forEach(dir => {
-    const start = -(columns / 2 - 0.5) * (size.width + 0.2)
-
-    for (let i = 0; i < columns; i++) {
-      for (let j = 0; j < 2; j++) {
-        const wallTile = createMahjongTile(size)
-        const offset = start + i * (size.width + 0.2)
-        const yOffset = size.height / 2 + j * gapY
-
-        let x = dir.x, y = yOffset, z = dir.z
-        if (dir.horizontal === 'x') {
-          x += offset
-        } else {
-          z += offset
-        }
-
-        wallTile.position.set(x, y, z)
-        wallTile.rotation.set(dir.rotateX, dir.angle, dir.rotateZ)
-        wallTile.userData.baseY = wallTile.position.y
-        wall.push(wallTile)
-        scene.add(wallTile)
-      }
-    }
-  })
-
-  return wall
-}
 
 // 获取当前鼠标点击下命中的牌
 function getIntersectedTile(event, tiles) {
