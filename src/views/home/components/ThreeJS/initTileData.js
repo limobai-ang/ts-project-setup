@@ -1,7 +1,7 @@
 // initTileData.js
 import { createMahjongTile } from './createMahjongTile.js'
 
-const basePath = '/images/'
+const basePath = '/image/'
 
 let globalId = 1
 
@@ -51,7 +51,7 @@ const shuffleTiles = (tiles) => {
   const copy = [...tiles]
   for (let i = copy.length - 1; i > 0; i--) {
     const j = Math.floor(Math.random() * (i + 1))
-    ;[copy[i], copy[j]] = [copy[j], copy[i]]
+      ;[copy[i], copy[j]] = [copy[j], copy[i]]
   }
   return copy
 }
@@ -84,15 +84,11 @@ export function generateWalls() {
 }
 
 export function createWallFromTiles(scene, configOption, wallTilesBySide) {
-  const {tileSize, regions} = configOption
+  const { tileSize, regions } = configOption
   const columns = 17
   const gapY = tileSize.depth
-  const wallMeshes = {
-    east: [],
-    south: [],
-    west: [],
-    north: [],
-  }
+
+  const wallMeshes = []
 
   const directions = [
     { side: 'south', angle: -Math.PI, x: 0, z: regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },
@@ -109,7 +105,7 @@ export function createWallFromTiles(scene, configOption, wallTilesBySide) {
     for (let i = 0; i < columns; i++) {
       for (let j = 0; j < 2; j++) {
         const tileData = tiles[tileIndex++]
-        const wallTile = createMahjongTile(tileSize, tileData.image)
+        const wallTile = createMahjongTile(tileSize, { frontImage: tileData.image })
 
         const offset = start + i * (tileSize.width + 0.2)
         const yOffset = tileSize.height / 2 + j * gapY
@@ -126,7 +122,7 @@ export function createWallFromTiles(scene, configOption, wallTilesBySide) {
         wallTile.userData.baseY = wallTile.position.y
 
         scene.add(wallTile)
-        wallMeshes[dir.side].push(wallTile)
+        wallMeshes.push(wallTile)
       }
     }
   })

@@ -52,6 +52,8 @@ onMounted(() => {
 
   const tiles = createHandTiles(scene) // 创建手牌
   const wall = createWallFromTiles(scene, config, wallData)  // 创建四面牌墙
+  console.log(wall, 'wall');
+  
   const discard = []
 
   // 鼠标交互变量

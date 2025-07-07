@@ -36,7 +36,7 @@ function createGradientTexture(colorStart, colorEnd, direction = 'vertical', rev
 }
 
 // 创建麻将模型
-export function createMahjongTile(size = { width: 4, height: 6, depth: 2 }, frontData = { frontImage: '/image/yitiao.png' }) {
+export function createMahjongTile(size = { width: 4, height: 6, depth: 2 }, frontData = { frontImage: '/image/bamboo-1.png' }) {
   const geometry = new RoundedBoxGeometry(size.width, size.height, size.depth, 5, 0.3)
 
   const colorStart = '#409eff' // 蓝色背面
