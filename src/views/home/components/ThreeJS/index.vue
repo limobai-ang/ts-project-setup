@@ -1,22 +1,47 @@
 <template>
   <div class="mahjong-container">
     <canvas ref="canvasRef" class="mahjong-canvas" />
+    <DiceResult v-if="diceShow" :values="diceData" @roll-end="diceEnd"></DiceResult>
   </div>
+
 </template>
 
 <script setup>
 import { onMounted, ref } from 'vue'
+import DiceResult from './components/DiceResult.vue'
 import * as THREE from 'three'
 import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createMahjongTile, setMahjongTileColor } from './createMahjongTile.js'
 import { generateWalls, createWallFromTiles } from './initTileData.js'
-
+import { calculateWallStart } from './utils.js'
 const canvasRef = ref()
 
-const wallData = generateWalls()
+const wallData = generateWalls()   // 生成最初始的牌墙数据 （后面由后端生成返回到前端）
 console.log(wallData, 'wallData');
+const diceData = ref([2, 3])
+const diceShow = ref(false)
 
+// 定义一个自己的方位(暂时模拟东边)
+const curSides = 'east'
+
+const diceStart = () => {
+  // 生成两个随机骰子点数
+  const values = [Math.ceil(Math.random() * 6), Math.ceil(Math.random() * 6)]
+  diceData.value = values
+  diceShow.value = true
+
+}
+
+const diceEnd = (values) => {
+  console.log('骰子点数:', values)
+  diceShow.value = false
+  // 这里可以根据骰子点数进行后续逻辑处理
+
+  // 根据筛子点数确定起牌位置
+  const wallStartData = calculateWallStart(curSides, diceData.value[0], diceData.value[1])
+  console.log(curSides, '起牌位置:', wallStartData);
+}
 
 // 全局配置对象：包含棋盘尺寸、麻将尺寸、各区域位置
 const config = {
@@ -39,6 +64,11 @@ let camera;
 let renderer;
 let controls;
 let board;
+
+// 各区域内的模型集合
+let tiles = []  // 手牌区域的模型
+let wall = []   // 牌墙区域的模型
+let discard = []  // 弃牌区域的模型
 onMounted(() => {
   const scene = new THREE.Scene()
   camera = createCamera()
@@ -50,11 +80,11 @@ onMounted(() => {
   board = createBoard()
   scene.add(board)
 
-  const tiles = createHandTiles(scene) // 创建手牌
-  const wall = createWallFromTiles(scene, config, wallData)  // 创建四面牌墙
-  console.log(wall, 'wall');
-  
-  const discard = []
+  // tiles = createHandTiles(scene) // 创建手牌
+  const { grouped: wall, flat: wallTiles } = createWallFromTiles(scene, config, wallData)
+
+  // 摇筛子
+  diceStart()
 
   // 鼠标交互变量
   let selectedTile = null
@@ -72,8 +102,7 @@ onMounted(() => {
   // 鼠标按下：选中牌并准备拖拽
   function onMouseDown(event) {
     // 使用射线（Raycaster）判断鼠标点击的是否是一个麻将牌（tile）。如果是，就会返回被点击的对象。
-    const hit = getIntersectedTile(event, tiles)  // 这是移动手牌操作 从手牌中找
-    const hiw = getIntersectedTile(event, wall)  // 这是从牌墙中取牌的操作 从牌墙中找
+    const hit = getIntersectedTile(event, wallTiles) 
 
     if (!hit && !hiw) return
 
@@ -181,8 +210,6 @@ onMounted(() => {
             tiles.splice(tiles.indexOf(selectedTile), 1)
             tiles.splice(insertIndex, 0, selectedTile)
           }
-
-
           console.log('移动整理手牌');
         }
         selectedTile.position.y = config.tileSize.height / 2
@@ -201,6 +228,7 @@ onMounted(() => {
       selectedTile = null
       insertIndex = null
     }
+
   }
 
   // 动画渲染
@@ -319,16 +347,22 @@ function getPoint(event) {
 
   return point
 }
+
+
+
 </script>
 
 <style scoped>
 .mahjong-container {
-  width: 100vw;
-  height: 100vh;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
+  position: relative;
 }
 
 .mahjong-canvas {
+  width: 100%;
+  height: 100%;
   display: block;
   cursor: pointer;
 }

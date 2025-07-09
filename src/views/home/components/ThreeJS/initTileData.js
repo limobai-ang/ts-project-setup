@@ -88,7 +88,12 @@ export function createWallFromTiles(scene, configOption, wallTilesBySide) {
   const columns = 17
   const gapY = tileSize.depth
 
-  const wallMeshes = []
+  const wallMeshes = {
+    east: Array.from({ length: 17 }, () => []),  // 每列一个数组
+    south: Array.from({ length: 17 }, () => []),
+    west: Array.from({ length: 17 }, () => []),
+    north: Array.from({ length: 17 }, () => []),
+  }
 
   const directions = [
     { side: 'south', angle: -Math.PI, x: 0, z: regions.wall.z, horizontal: 'x', rotateX: -Math.PI / 2, rotateZ: 0 },
@@ -119,15 +124,40 @@ export function createWallFromTiles(scene, configOption, wallTilesBySide) {
 
         wallTile.position.set(x, y, z)
         wallTile.rotation.set(dir.rotateX, dir.angle, dir.rotateZ)
-        wallTile.userData.baseY = wallTile.position.y
+
+        tile.userData = {
+          id: tileData.id,                  // 全局唯一编号
+          type: tileData.type,              // 牌类型（dot/bamboo/character/wind/dragon）
+          value: tileData.value,            // 点数或文字
+          image: tileData.image,            // 正面图标
+          owner: null,                      // 当前拥有者（发牌前为空） 'east' | 'south' | 'west' | 'north' | null
+          state: 'wall',                    // 初始状态为墙中  'wall' | 'hand' | 'discard' | 'melded' | 'drawn'
+
+          position: {                       // 初始位置（与 mesh.position 同步）
+            x: wallTile.position.x,
+            y: wallTile.position.y,
+            z: wallTile.position.z
+          },
+
+          baseY: wallTile.position.y,       // 用于归位的 y 值
+
+          targetX: undefined,               // 拖拽动画目标位置
+          targetZ: undefined,
+
+          originalColor: new THREE.Color('#ffffff'), // 正面默认颜色
+          history: []                       // 操作记录数组
+        }
 
         scene.add(wallTile)
-        wallMeshes.push(wallTile)
+        wallMeshes[dir.side][i][j] = wallTile // 明确记录 row 层
       }
     }
   })
 
-  return wallMeshes
+  return {
+    grouped: wallMeshes, // { east: [], south: [], west: [], north: [] }
+    flat: Object.values(wallMeshes).flat() // 一维数组，供射线检测使用
+  }
 }
 
 export {
