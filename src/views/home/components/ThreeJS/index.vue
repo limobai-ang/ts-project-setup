@@ -52,8 +52,8 @@ const diceEnd = (values) => {
     const z = config.regions.hand.z
     const y = config.tileSize.height / 2
 
-    tile.userData.position = { x, y, z,}
-    tile.userData.rotation = { x: 0, y: 0, z: 0}
+    tile.userData.position = { x, y, z, }
+    tile.userData.rotation = { x: 0, y: 0, z: 0 }
 
     setMahjongTileColor(tile)
   })
@@ -174,7 +174,7 @@ onMounted(() => {
       // 计算插入索引，保持动态排序
       insertIndex = Math.max(
         0,
-        Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + 6)
+        Math.min(tiles.length, Math.round(point.x / (config.tileSize.width + config.tileSize.gap)) + Math.ceil(tiles.length / 2))
       )
 
       // 给其他牌设置目标位置，让出空间
@@ -182,7 +182,7 @@ onMounted(() => {
         if (tile !== selectedTile) {
           let offset = 0
           if (i >= insertIndex) offset = config.tileSize.width + config.tileSize.gap
-          const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap) + offset
+          const targetX = (i - Math.ceil(tiles.length / 2)) * (config.tileSize.width + config.tileSize.gap) + offset
           tile.userData.position.x = targetX
         }
       })
@@ -199,8 +199,9 @@ onMounted(() => {
 
       // 判定用户操作 根据z轴的位置判断
       if (Math.abs(point.z) <= config.regions.discard.z) {
-        selectedTile.rotation.set(-Math.PI / 2, 0, 0)
-        selectedTile.position.y = 1
+        selectedTile.userData.rotation = { x: -Math.PI / 2, y: 0, z: 0 }
+        selectedTile.userData.position = { x: selectedTile.position.x, y: 1, z: selectedTile.position.z }
+
 
         switch (selectedTile.userData.state) {
           case 'wall':
@@ -219,6 +220,8 @@ onMounted(() => {
           case 'wall':
             // 插入数组排序位置
             tiles.splice(insertIndex, 0, selectedTile)
+            selectedTile.userData.position = { x: 0, y: config.tileSize.height / 2, z: config.regions.hand.z }
+            selectedTile.userData.rotation = { x: 0, y: 0, z: 0 }
             selectedTile.userData.state = 'hand' // 更新状态为手牌
             break
           case 'hand':
