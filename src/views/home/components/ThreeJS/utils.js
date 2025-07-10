@@ -12,7 +12,7 @@ export function calculateWallStart(dealerSide, dice1, dice2) {
   const total = dice1 + dice2
 
   const steps = (total - 1) % 4
-  const startIndex = (dealerIndex + steps) % 4
+  const startIndex = (dealerIndex + 1 + steps) % 4
   const startSide = sides[startIndex]
 
   
@@ -23,3 +23,76 @@ export function calculateWallStart(dealerSide, dice1, dice2) {
     columnFromRight,
   }
 }
+
+export function takeTilesFromWall(wallMeshes, startInfo, count = 1) {
+  const order = ['east', 'south', 'west', 'north'] // 顺时针顺序
+  const result = []
+
+  // 找起始位置
+  const { startSide, columnFromRight: startCol  } = startInfo
+  let currentSide = startSide
+  let col = startCol
+  let row = 0  // 默认从下层开始
+
+  for (let i = 0; i < count; i++) {
+    // 取牌
+    const tile = wallMeshes[currentSide]?.[col]?.[row]
+
+    if (!tile) {
+      console.warn(`取牌失败：${currentSide} 第 ${col} 列 第 ${row} 层无牌`)
+      break
+    }
+    result.push(tile)
+
+    // 下一个位置：
+    if (row === 0) {
+      row = 1
+    } else {
+      row = 0
+      col++
+      if (col >= 17) {
+        col = 0
+        // 顺时针切换到下一个方位
+        const idx = (order.indexOf(currentSide) + 1) % 4
+        currentSide = order[idx]
+      }
+    }
+  }
+
+  return result
+}
+
+
+// 用于处理角度差值（考虑 wrap-around，如 -PI 和 PI 是同一个方向）
+export function normalizeAngle(angle) {
+  angle = (angle + Math.PI) % (Math.PI * 2) - Math.PI
+  return angle
+}
+export function updateTileAnimation(tile) {
+  if (!tile || !tile.userData) return
+
+  const { position, rotation } = tile.userData
+
+  // 平滑移动到目标位置
+  if (position?.x !== undefined) {
+    tile.position.x += (position.x - tile.position.x) * 0.15
+  }
+  if (position?.y !== undefined) {
+    tile.position.y += (position.y - tile.position.y) * 0.15
+  }
+  if (position?.z !== undefined) {
+    tile.position.z += (position.z - tile.position.z) * 0.15
+  }
+
+  // 平滑旋转到目标角度（注意处理角度 wrap-around 问题）
+  if (rotation?.x !== undefined) {
+    tile.rotation.x += normalizeAngle(rotation.x - tile.rotation.x) * 0.15
+  }
+  if (rotation?.y !== undefined) {
+    tile.rotation.y += normalizeAngle(rotation.y - tile.rotation.y) * 0.15
+  }
+  if (rotation?.z !== undefined) {
+    tile.rotation.z += normalizeAngle(rotation.z - tile.rotation.z) * 0.15
+  }
+}
+

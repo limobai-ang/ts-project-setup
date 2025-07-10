@@ -1,5 +1,6 @@
 // initTileData.js
 import { createMahjongTile } from './createMahjongTile.js'
+import * as THREE from 'three'
 
 const basePath = '/image/'
 
@@ -125,7 +126,7 @@ export function createWallFromTiles(scene, configOption, wallTilesBySide) {
         wallTile.position.set(x, y, z)
         wallTile.rotation.set(dir.rotateX, dir.angle, dir.rotateZ)
 
-        tile.userData = {
+        wallTile.userData = {
           id: tileData.id,                  // 全局唯一编号
           type: tileData.type,              // 牌类型（dot/bamboo/character/wind/dragon）
           value: tileData.value,            // 点数或文字
@@ -133,18 +134,22 @@ export function createWallFromTiles(scene, configOption, wallTilesBySide) {
           owner: null,                      // 当前拥有者（发牌前为空） 'east' | 'south' | 'west' | 'north' | null
           state: 'wall',                    // 初始状态为墙中  'wall' | 'hand' | 'discard' | 'melded' | 'drawn'
 
+          columnIndex: i,
+          rowIndex: j,
+
           position: {                       // 初始位置（与 mesh.position 同步）
             x: wallTile.position.x,
             y: wallTile.position.y,
             z: wallTile.position.z
           },
 
-          baseY: wallTile.position.y,       // 用于归位的 y 值
+          rotation: {
+            x: wallTile.rotation.x,          // 初始旋转（与 mesh.rotation 同步）
+            y: wallTile.rotation.y,
+            z: wallTile.rotation.z
+          },
 
-          targetX: undefined,               // 拖拽动画目标位置
-          targetZ: undefined,
-
-          originalColor: new THREE.Color('#ffffff'), // 正面默认颜色
+          originalColor: wallTile.userData.originalColor, // 正面默认颜色
           history: []                       // 操作记录数组
         }
 
@@ -156,7 +161,7 @@ export function createWallFromTiles(scene, configOption, wallTilesBySide) {
 
   return {
     grouped: wallMeshes, // { east: [], south: [], west: [], north: [] }
-    flat: Object.values(wallMeshes).flat() // 一维数组，供射线检测使用
+    flat: Object.values(wallMeshes).flat(Infinity) // 一维数组，供射线检测使用
   }
 }
 

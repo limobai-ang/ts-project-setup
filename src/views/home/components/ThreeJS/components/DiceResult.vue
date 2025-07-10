@@ -50,7 +50,7 @@ function checkEnd() {
     // 滚动结束后 过两秒在触发事件
     setTimeout(() => {
       emit('roll-end', finalValues.value)
-    }, 2000)
+    }, 1000)
   }
 }
 

@@ -101,7 +101,6 @@ export function createMahjongTile(size = { width: 4, height: 6, depth: 2 }, fron
 
   const tile = new THREE.Mesh(geometry, materials)
   tile.userData.originalColor = tile.material.map(m => m.color.clone())
-  tile.userData.baseY = size.height / 2
   return tile
 }
 

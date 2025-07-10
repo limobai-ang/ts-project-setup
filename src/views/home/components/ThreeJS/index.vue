@@ -14,7 +14,7 @@ import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeom
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createMahjongTile, setMahjongTileColor } from './createMahjongTile.js'
 import { generateWalls, createWallFromTiles } from './initTileData.js'
-import { calculateWallStart } from './utils.js'
+import { calculateWallStart, takeTilesFromWall, updateTileAnimation } from './utils.js'
 const canvasRef = ref()
 
 const wallData = generateWalls()   // 生成最初始的牌墙数据 （后面由后端生成返回到前端）
@@ -34,13 +34,33 @@ const diceStart = () => {
 }
 
 const diceEnd = (values) => {
-  console.log('骰子点数:', values)
   diceShow.value = false
-  // 这里可以根据骰子点数进行后续逻辑处理
-
   // 根据筛子点数确定起牌位置
   const wallStartData = calculateWallStart(curSides, diceData.value[0], diceData.value[1])
-  console.log(curSides, '起牌位置:', wallStartData);
+
+  const handTiles = takeTilesFromWall(wall, wallStartData, 4)
+
+  // 移动到手牌区域
+  handTiles.forEach((tile, i) => {
+    setMahjongTileColor(tile, '#ffaa00')
+
+    // 设置状态为手牌
+    tile.userData.state = 'hand'
+
+    // 计算每张牌在手牌区域的 x/z/y 目标位置
+    const x = (i - 1.5) * (config.tileSize.width + config.tileSize.gap)  // 居中排列
+    const z = config.regions.hand.z
+    const y = config.tileSize.height / 2
+
+    tile.userData.position = { x, y, z,}
+    tile.userData.rotation = { x: 0, y: 0, z: 0}
+
+    setMahjongTileColor(tile)
+  })
+
+  // 把这些牌也加入到手牌数组中（便于后续操作）
+  tiles.push(...handTiles)
+
 }
 
 // 全局配置对象：包含棋盘尺寸、麻将尺寸、各区域位置
@@ -68,6 +88,7 @@ let board;
 // 各区域内的模型集合
 let tiles = []  // 手牌区域的模型
 let wall = []   // 牌墙区域的模型
+let wallTiles = [] // 牌墙区域的模型（扁平化一维数组，供射线检测使用）
 let discard = []  // 弃牌区域的模型
 onMounted(() => {
   const scene = new THREE.Scene()
@@ -81,7 +102,9 @@ onMounted(() => {
   scene.add(board)
 
   // tiles = createHandTiles(scene) // 创建手牌
-  const { grouped: wall, flat: wallTiles } = createWallFromTiles(scene, config, wallData)
+  const { grouped, flat } = createWallFromTiles(scene, config, wallData)
+  wall = grouped
+  wallTiles = flat
 
   // 摇筛子
   diceStart()
@@ -89,11 +112,9 @@ onMounted(() => {
   // 鼠标交互变量
   let selectedTile = null
   let dragging = false
-  let behavior = null  // 行为动作
-  let dragOffset = new THREE.Vector3()
+
   let insertIndex = -1
-  const raycaster = new THREE.Raycaster()
-  const mouse = new THREE.Vector2()
+
   // 绑定鼠标事件
   renderer.domElement.addEventListener('mousedown', onMouseDown)
   renderer.domElement.addEventListener('mousemove', onMouseMove)
@@ -102,34 +123,28 @@ onMounted(() => {
   // 鼠标按下：选中牌并准备拖拽
   function onMouseDown(event) {
     // 使用射线（Raycaster）判断鼠标点击的是否是一个麻将牌（tile）。如果是，就会返回被点击的对象。
-    const hit = getIntersectedTile(event, wallTiles) 
+    const hit = getIntersectedTile(event, wallTiles)
 
-    if (!hit && !hiw) return
-
+    if (!hit) return
     // 如果点击到了麻将牌，取消之前选中牌的高亮与浮起状态，还原它的材质颜色、Y 位置（高度）。
-    // 取牌
-    if (hiw) {
-      behavior = 'obtain'
-      if (selectedTile && selectedTile !== hiw.object) {
-        setMahjongTileColor(selectedTile)
-        selectedTile.position.y = selectedTile.userData.baseY
-      }
-      selectedTile = hiw.object
-      // 高亮颜色
-      selectedTile.position.y = config.tileSize.depth * 3
+    if (selectedTile && selectedTile !== hit.object) {
+      setMahjongTileColor(selectedTile)
+      selectedTile.position.y = selectedTile.userData.baseY
     }
 
-    if (hit) {
-      // 移动手牌调整位置
-      behavior = 'move'  // 移动
-      if (selectedTile && selectedTile !== hit.object) {
-        setMahjongTileColor(selectedTile)
-        selectedTile.position.y = selectedTile.userData.baseY
-      }
-      selectedTile = hit.object
-      selectedTile.position.y = config.tileSize.height / 2 + 1
-    }
+    // 设置当前选中的牌
+    selectedTile = hit.object
 
+    // 'wall' | 'hand' | 'discard' | 'melded' | 'drawn'
+    switch (selectedTile.userData.state) {
+      case 'wall':
+        selectedTile.position.y = config.tileSize.depth * 3
+        break
+      case 'hand':
+        selectedTile.position.y = config.tileSize.height / 2 + 1
+        break
+    }
+    // 高亮颜色
     dragging = true
     controls.enabled = false
 
@@ -146,12 +161,16 @@ onMounted(() => {
       selectedTile.position.x = point.x
       selectedTile.position.z = point.z
 
-      // 取牌的逻辑
-      if (behavior == 'obtain') {
-        selectedTile.rotation.set(0, 0, 0)
-      } else if (behavior == 'move') {
 
+      switch (selectedTile.userData.state) {
+        case 'wall':
+          selectedTile.rotation.set(0, 0, 0)
+          break
+        case 'hand':
+
+          break
       }
+
       // 计算插入索引，保持动态排序
       insertIndex = Math.max(
         0,
@@ -164,7 +183,7 @@ onMounted(() => {
           let offset = 0
           if (i >= insertIndex) offset = config.tileSize.width + config.tileSize.gap
           const targetX = (i - 6) * (config.tileSize.width + config.tileSize.gap) + offset
-          tile.userData.targetX = targetX
+          tile.userData.position.x = targetX
         }
       })
 
@@ -180,38 +199,38 @@ onMounted(() => {
 
       // 判定用户操作 根据z轴的位置判断
       if (Math.abs(point.z) <= config.regions.discard.z) {
-        // 取牌放入弃牌
-        if (behavior === 'obtain') {
-          // 取牌后直接弃牌
-          selectedTile.rotation.set(-Math.PI / 2, 0, 0)
-          selectedTile.position.y = 1
-          discard.push(selectedTile)
-        }
-        // 从手牌取牌放入弃牌区
-        if (behavior === 'move') {
-          selectedTile.rotation.set(-Math.PI / 2, 0, 0)
-          selectedTile.position.y = 1
-          tiles.splice(tiles.indexOf(selectedTile), 1)
+        selectedTile.rotation.set(-Math.PI / 2, 0, 0)
+        selectedTile.position.y = 1
 
-          console.log('从手牌取牌放入弃牌区');
-          discard.push(selectedTile)
+        switch (selectedTile.userData.state) {
+          case 'wall':
+            // 从牌墙中移除
 
+            break
+          case 'hand':
+            tiles.splice(tiles.indexOf(selectedTile), 1)
+            break
         }
+        selectedTile.userData.state = 'discard' // 更新状态为弃牌
+        discard.push(selectedTile)
       } else if (Math.abs(point.z) >= config.regions.wall.z) {
         // 取牌放入手牌
-        if (behavior === 'obtain') {
-          // 插入数组排序位置
-          tiles.splice(insertIndex, 0, selectedTile)
-        }
-        // 移动整理手牌
-        if (behavior === 'move') {
-          // 插入数组排序位置
-          if (insertIndex && insertIndex >= 0) {
-            tiles.splice(tiles.indexOf(selectedTile), 1)
+        switch (selectedTile.userData.state) {
+          case 'wall':
+            // 插入数组排序位置
             tiles.splice(insertIndex, 0, selectedTile)
-          }
-          console.log('移动整理手牌');
+            selectedTile.userData.state = 'hand' // 更新状态为手牌
+            break
+          case 'hand':
+            // 插入数组排序位置
+            if (insertIndex && insertIndex >= 0) {
+              tiles.splice(tiles.indexOf(selectedTile), 1)
+              tiles.splice(insertIndex, 0, selectedTile)
+            }
+            console.log('移动整理手牌');
+            break
         }
+
         selectedTile.position.y = config.tileSize.height / 2
         selectedTile.position.z = config.regions.hand.z // 归位 z
       }
@@ -219,8 +238,8 @@ onMounted(() => {
       tiles.forEach((tile, i) => {
         const targetX = (i - Math.floor(tiles.length / 2)) * (config.tileSize.width + config.tileSize.gap)
         tile.userData.index = i
-        tile.userData.targetX = targetX
-        tile.userData.targetZ = config.regions.hand.z
+        tile.userData.position.x = targetX
+        tile.userData.position.z = config.regions.hand.z
       })
       setMahjongTileColor(selectedTile)
       dragging = false
@@ -235,11 +254,15 @@ onMounted(() => {
   const animate = () => {
     requestAnimationFrame(animate)
     controls.update()
-    tiles.forEach(tile => {
-      if (tile.userData.targetX !== undefined && (!dragging || tile !== selectedTile)) {
-        tile.position.x += (tile.userData.targetX - tile.position.x) * 0.15
+
+    // 动画更新所有牌
+    const allTiles = wallTiles
+    allTiles.forEach(tile => {
+      if (!dragging || tile !== selectedTile) {
+        updateTileAnimation(tile)
       }
     })
+
     renderer.render(scene, camera)
   }
   animate()
@@ -301,22 +324,6 @@ function createBoard() {
   const board = new THREE.Mesh(geometry, material)
   board.rotation.x = -Math.PI / 2
   return board
-}
-
-function createHandTiles(scene) {
-  const tiles = []
-  const { width, height, depth, gap } = config.tileSize
-
-  for (let i = 0; i < 13; i++) {
-    const tile = createMahjongTile({ width, height, depth })
-    tile.position.set((i - 6) * (width + gap), height / 2, config.regions.hand.z)
-    tile.userData.baseY = tile.position.y
-    tile.userData.index = i
-    scene.add(tile)
-    tiles.push(tile)
-  }
-
-  return tiles
 }
 
 
