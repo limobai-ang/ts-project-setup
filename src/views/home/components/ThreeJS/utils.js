@@ -15,12 +15,12 @@ export function calculateWallStart(dealerSide, dice1, dice2) {
   const startIndex = (dealerIndex + 1 + steps) % 4
   const startSide = sides[startIndex]
 
-  
+
   const columnFromRight = Math.max(dice1, dice2) // 从右往左第几列
 
   return {
-    startSide,
-    columnFromRight,
+    side: startSide,
+    columnIndex: columnFromRight,
   }
 }
 
@@ -29,7 +29,7 @@ export function takeTilesFromWall(wallMeshes, startInfo, count = 1) {
   const result = []
 
   // 找起始位置
-  const { startSide, columnFromRight: startCol  } = startInfo
+  const { startSide, columnFromRight: startCol } = startInfo
   let currentSide = startSide
   let col = startCol
   let row = 0  // 默认从下层开始
@@ -68,31 +68,58 @@ export function normalizeAngle(angle) {
   angle = (angle + Math.PI) % (Math.PI * 2) - Math.PI
   return angle
 }
+
+
+function isClose(a, b, threshold = 0.01) {
+  return Math.abs(a - b) < threshold
+}
+
 export function updateTileAnimation(tile) {
   if (!tile || !tile.userData) return
 
   const { position, rotation } = tile.userData
+  let moved = true
+  let rotated = true
 
-  // 平滑移动到目标位置
+  // --- 平滑移动 ---
   if (position?.x !== undefined) {
-    tile.position.x += (position.x - tile.position.x) * 0.15
+    const dx = position.x - tile.position.x
+    tile.position.x += dx * 0.15
+    if (!isClose(tile.position.x, position.x)) moved = false
   }
   if (position?.y !== undefined) {
-    tile.position.y += (position.y - tile.position.y) * 0.15
+    const dy = position.y - tile.position.y
+    tile.position.y += dy * 0.15
+    if (!isClose(tile.position.y, position.y)) moved = false
   }
   if (position?.z !== undefined) {
-    tile.position.z += (position.z - tile.position.z) * 0.15
+    const dz = position.z - tile.position.z
+    tile.position.z += dz * 0.15
+    if (!isClose(tile.position.z, position.z)) moved = false
   }
 
-  // 平滑旋转到目标角度（注意处理角度 wrap-around 问题）
+  // --- 平滑旋转 ---
   if (rotation?.x !== undefined) {
-    tile.rotation.x += normalizeAngle(rotation.x - tile.rotation.x) * 0.15
+    const rx = normalizeAngle(rotation.x - tile.rotation.x)
+    tile.rotation.x += rx * 0.15
+    if (!isClose(rx, 0)) rotated = false
   }
   if (rotation?.y !== undefined) {
-    tile.rotation.y += normalizeAngle(rotation.y - tile.rotation.y) * 0.15
+    const ry = normalizeAngle(rotation.y - tile.rotation.y)
+    tile.rotation.y += ry * 0.15
+    if (!isClose(ry, 0)) rotated = false
   }
   if (rotation?.z !== undefined) {
-    tile.rotation.z += normalizeAngle(rotation.z - tile.rotation.z) * 0.15
+    const rz = normalizeAngle(rotation.z - tile.rotation.z)
+    tile.rotation.z += rz * 0.15
+    if (!isClose(rz, 0)) rotated = false
+  }
+
+  // --- 动画完成 ---
+  if (moved && rotated && !tile.userData.animationDone) {
+    tile.userData.animationDone = true
+    if (typeof tile.userData.onAnimationComplete === 'function') {
+      tile.userData.onAnimationComplete(tile)
+    }
   }
 }
-

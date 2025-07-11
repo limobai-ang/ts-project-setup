@@ -10,15 +10,16 @@
 import { onMounted, ref } from 'vue'
 import DiceResult from './components/DiceResult.vue'
 import * as THREE from 'three'
-import { RoundedBoxGeometry } from 'three/examples/jsm/geometries/RoundedBoxGeometry.js'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
 import { createMahjongTile, setMahjongTileColor } from './createMahjongTile.js'
 import { generateWalls, createWallFromTiles } from './initTileData.js'
 import { calculateWallStart, takeTilesFromWall, updateTileAnimation } from './utils.js'
+import Wall from './wall.js'
+
 const canvasRef = ref()
 
 const wallData = generateWalls()   // 生成最初始的牌墙数据 （后面由后端生成返回到前端）
-console.log(wallData, 'wallData');
+
 const diceData = ref([2, 3])
 const diceShow = ref(false)
 
@@ -33,34 +34,86 @@ const diceStart = () => {
 
 }
 
-const diceEnd = (values) => {
-  diceShow.value = false
-  // 根据筛子点数确定起牌位置
-  const wallStartData = calculateWallStart(curSides, diceData.value[0], diceData.value[1])
+function startTileMove(tile, position, rotation = {}, onComplete) {
+  if (!tile || !tile.userData) return
 
-  const handTiles = takeTilesFromWall(wall, wallStartData, 4)
+  // 设置目标位置信息
+  tile.userData.position = {
+    x: position.x ?? tile.position.x,
+    y: position.y ?? tile.position.y,
+    z: position.z ?? tile.position.z,
+  }
 
-  // 移动到手牌区域
-  handTiles.forEach((tile, i) => {
-    setMahjongTileColor(tile, '#ffaa00')
+  // 设置目标旋转信息
+  tile.userData.rotation = {
+    x: rotation.x ?? tile.rotation.x,
+    y: rotation.y ?? tile.rotation.y,
+    z: rotation.z ?? tile.rotation.z,
+  }
 
-    // 设置状态为手牌
-    tile.userData.state = 'hand'
+  // 清除完成标志和设置完成回调
+  tile.userData.animationDone = false
+  tile.userData.onAnimationComplete = onComplete
+}
 
-    // 计算每张牌在手牌区域的 x/z/y 目标位置
-    const x = (i - 1.5) * (config.tileSize.width + config.tileSize.gap)  // 居中排列
-    const z = config.regions.hand.z
-    const y = config.tileSize.height / 2
+/**
+ * 把一批牌动画移动到指定玩家手牌区
+ * @param {THREE.Mesh[]} tiles      要移动的牌
+ * @param {'east'|'south'|'west'|'north'} side 发给哪家
+ * @param {Function} onDone         所有牌完成动画后的回调
+ */
+function moveTilesBatch(tiles, side, onDone) {
+  if (!tiles.length) {
+    onDone?.()
+    return
+  }
 
-    tile.userData.position = { x, y, z, }
-    tile.userData.rotation = { x: 0, y: 0, z: 0 }
+  // 计算该玩家手牌基准位置
+  const baseZ = getHandZ(side)
+  const gap = config.tileSize.width + config.tileSize.gap
+  const baseY = config.tileSize.height / 2
 
-    setMahjongTileColor(tile)
+  let remaining = tiles.length
+
+  tiles.forEach((tile, idx) => {
+    // 让一批牌在目的手牌区从左到右（或对应方位）排好
+    const targetX = (idx - (tiles.length - 1) / 2) * gap
+    const targetPos = { x: targetX, y: baseY, z: baseZ }
+
+    // 所有牌正面朝向自己 -> rotation 归零
+    startTileMove(tile, targetPos, { x: 0, y: 0, z: 0 }, () => {
+      // 单张动画完成
+      if (--remaining === 0) {
+        onDone?.()
+      }
+    })
   })
+}
 
-  // 把这些牌也加入到手牌数组中（便于后续操作）
-  tiles.push(...handTiles)
+/* === 辅助: 根据方位给出手牌区 z 或 x === */
+function getHandZ(side) {
+  switch (side) {
+    case 'east': return config.regions.hand.z          // 你坐南北向桌
+    case 'west': return -config.regions.hand.z
+    case 'south': return 0                               // 如果想把南北放左右可调整
+    case 'north': return 0
+    default: return config.regions.hand.z
+  }
+}
+const diceEnd = async (values) => {
+  diceShow.value = false
 
+  // 根据骰子结果定位起始牌
+  wallInstance.applyDice(curSides, values[0], values[1])
+  // 发牌，全部动画结束后 resolve
+  await wallInstance.dealToPlayers(
+    ['east', 'south', 'west', 'north'], // 顺序
+    3,                                  // 3 轮
+    4,                                  // 每轮 4 张
+    moveTilesBatch                      // 你的批量动画实现
+  )
+
+  console.log('四家发牌完成，游戏开始!')
 }
 
 // 全局配置对象：包含棋盘尺寸、麻将尺寸、各区域位置
@@ -86,9 +139,8 @@ let controls;
 let board;
 
 // 各区域内的模型集合
-let tiles = []  // 手牌区域的模型
-let wall = []   // 牌墙区域的模型
-let wallTiles = [] // 牌墙区域的模型（扁平化一维数组，供射线检测使用）
+const playerTiles = { east: [], south: [], west: [], north: [] }
+let wallInstance = null
 let discard = []  // 弃牌区域的模型
 onMounted(() => {
   const scene = new THREE.Scene()
@@ -102,9 +154,8 @@ onMounted(() => {
   scene.add(board)
 
   // tiles = createHandTiles(scene) // 创建手牌
-  const { grouped, flat } = createWallFromTiles(scene, config, wallData)
-  wall = grouped
-  wallTiles = flat
+  wallInstance = new Wall(scene, config, wallData)
+  console.log(wallInstance, 'wallInstance');
 
   // 摇筛子
   diceStart()
@@ -123,7 +174,7 @@ onMounted(() => {
   // 鼠标按下：选中牌并准备拖拽
   function onMouseDown(event) {
     // 使用射线（Raycaster）判断鼠标点击的是否是一个麻将牌（tile）。如果是，就会返回被点击的对象。
-    const hit = getIntersectedTile(event, wallTiles)
+    const hit = getIntersectedTile(event, wallInstance.tilesFlat)
 
     if (!hit) return
     // 如果点击到了麻将牌，取消之前选中牌的高亮与浮起状态，还原它的材质颜色、Y 位置（高度）。
@@ -259,7 +310,7 @@ onMounted(() => {
     controls.update()
 
     // 动画更新所有牌
-    const allTiles = wallTiles
+    const allTiles = wallInstance.tilesFlat
     allTiles.forEach(tile => {
       if (!dragging || tile !== selectedTile) {
         updateTileAnimation(tile)
